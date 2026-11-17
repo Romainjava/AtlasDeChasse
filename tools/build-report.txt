@@ -1,0 +1,197 @@
+AtlasDeChasse build report
+
+Inputs
+  Petopia abilities : 32
+  Petopia ranks     : 155
+  Petopia teacher links: 474
+  warcraft.wiki.gg zone rows: 64
+  Wowhead NPC pages : 36 (25 with spawn points)
+  Enriched with 1 client-verified ability (Faster Attack)
+
+Output
+  abilities         : 33
+  ranks             : 156 (156 with a spell id)
+  teacher entries   : 497
+  beasts            : 419 (361 with a French name)
+  spots             : 444
+  families          : 19
+  zones             : 47 (6 Alliance, 5 Horde, 36 nil/contested)
+  Data/Data.lua     : 136.3 KB
+
+Coordinates
+  open-world teachers without a spot: 48 before Wowhead, 23 after (25 placed)
+  441 Wowhead spawn points reduced to 50 cluster centres
+  dungeon-only teachers without a spot: 38 (Wowhead cannot help, no open world spot)
+
+Notes
+  361 of 419 teachers have a French name: Polestar_frFR/Names.lua
+  only registers 500 NPC ids per chunk, the rest stay nil (the UI falls back to en).
+  Zone factions come from warcraft.wiki.gg bar colours, legend: 000033 Alliance territory, 330000 Horde territory, 333300 Contested territory, 003300 Combat zone.
+  Zones the page does not list (capital cities, battlegrounds, Forever-only zones) stay nil.
+  Faster Attack ships only the rank seen in the client (1263104, rank 4, Roman numerals);
+  its other ranks and teachers are unknown to every source here.
+  Wowhead spawn points never override HunterPetJournal or Petopia; each zone keeps at most
+  3 cluster centres, merged within 5 map units and rounded to 0.1.
+
+Ranks without a spell id: 0 (Petopia rank unknown to HunterPetJournal)
+
+Petopia teachers missing from HunterPetJournal: 5 (absent from HunterPetJournal)
+    npc 268530 Bloodtalon Matriarch (Bite 2)
+    npc 263315 Ombassa (Dash 2)
+    npc 213795 Gharrik (Demoralizing Screech 2)
+    npc 270298 Child of Jai'vhanel (Mine! 1)
+    npc 270196 Jai'vhanel (Mine! 1)
+
+Petopia teachers without coordinates: 61 (dungeon or coordinate-less NPC)
+    Forest Stalker (120)
+    Mud Crawler (3460)
+    Kresh (3653)
+    Blood Seeker (3868)
+    Scarlet Tracking Hound (4304)
+    Noxious Reaver (4347)
+    Noxious Shredder (4348)
+    Blind Hunter (4425)
+    Vilebranch Wolf (4482)
+    Agam'ar (4511)
+    Rotting Agam'ar (4512)
+    Raging Agam'ar (4514)
+    ... 49 more
+
+Wowhead spawn points merged: 25 (spotsSrc = wowhead)
+    Black Bear (1129): 1426 65.5/12.7
+    Plaguewing Vulture (1811): 1422 34.4/73.5, 1422 56.1/80.3, 1422 61.6/83.9
+    Ghost Saber (3619): 1439 38.5/47.6, 1439 59.2/19.9, 1439 59.4/14.9
+    Deepmoss Hatchling (4263): 1442 45.7/43.4, 1442 53.4/73.7, 1442 61.7/61.7
+    Deepmoss Matriarch (4264): 1442 45.7/43.1, 1442 53.2/74.1, 1442 60.3/63.4
+    Sandstrider (4724): 1443 37.6/31.6, 1443 39.8/24.5
+    Crazed Sandstrider (4725): 1443 29.7/76.4, 1443 31.9/71.6, 1443 33.2/81.3
+    Wayward Buzzard (6013): 1418 42.6/53
+    Scorpid Duneburrower (7803): 1446 61.3/53.7
+    Gharrik (213795): 1418 22.6/67.3
+    Elmpaw (248299): 1429 73.9/39.5, 1429 82.8/84.4, 1429 86.9/79.5
+    Vuldren (250868): 2521 43.2/45.3, 2521 44.8/53.2, 2521 44.9/38.3
+    ... 13 more
+
+Wowhead pages without spawn data: 10 (beast stays without coordinates)
+    Forest Stalker (120)
+    Mud Crawler (3460)
+    Noxious Reaver (4347)
+    Noxious Shredder (4348)
+    Vilebranch Wolf (4482)
+    Murderous Bonepaw (4691)
+    Rabid Shrike Bat (4862)
+    Rabid Snickerfang (5986)
+    Scorpok Snapper (5987)
+    Scorpok Lasher (5989)
+
+Wowhead spawn points refused: 0 (HunterPetJournal or Petopia placed the beast)
+
+Wowhead teaches agreements: 16 (same rank as Petopia)
+    Savannah Patriarch (3241): Cower 4 (1755)
+    Gharrik (213795): Demoralizing Screech 2 (24577)
+    Elmpaw (248299): Claw 2 (16828)
+    Vuldren (250868): Bite 1 (17253)
+    Shadowgale Ursera (250927): Claw 2 (16828)
+    Highlands Ursera (250928): Claw 1 (16827)
+    Urs'anah (251115): Claw 1 (16827)
+    Prideclaw (251245): Cower 1 (1742)
+    Windsong Crawler (254588): Claw 2 (16828)
+    Vulgara the Insatiable (254589): Bite 2 (17255)
+    Mystmane (259388): Swipe 1 (1264494)
+    Ombassa (263315): Dash 2 (23109)
+    ... 4 more
+
+Wowhead teaches disagreements: 0 (Petopia wins, teachers unchanged)
+
+Wowhead names that differ from ours: 0 (the id may be wrong)
+
+Zones added from Wowhead spots: 0 (not carried by HunterPetJournal)
+
+Wowhead zones without a name: 0 (their spots are dropped)
+
+HunterPetJournal-only teachers added: 23 (src = hpj)
+    Prairie Wolf Alpha (2960) teaches Furious Howl 1 (24604)
+    King Bangalash (731) teaches Dash 2 (23109)
+    Forest Stalker (120) teaches Bite 2 (17255)
+    Plaguewing Vulture (1811) teaches Dive 3 (23148)
+    Webwood Silkspinner (2000) teaches Bite 2 (17255)
+    Mud Crawler (3460) teaches Claw 2 (16828)
+    Noxious Flayer (4346) teaches Dive 1 (23145)
+    Noxious Reaver (4347) teaches Dive 1 (23145)
+    Noxious Reaver (4347) teaches Lightning Breath 4 (25010)
+    Noxious Shredder (4348) teaches Dive 1 (23145)
+    Noxious Shredder (4348) teaches Lightning Breath 4 (25010)
+    Vilebranch Wolf (4482) teaches Bite 6 (17259)
+    ... 11 more
+
+Petopia teachers HunterPetJournal does not credit: 112 (HPJ lists no taught spell for that beast)
+    Juvenile Vuldren (250873): Petopia says Bite 1 (17253), HPJ lists no taught spell
+    Vuldren (250868): Petopia says Bite 1 (17253), HPJ lists no taught spell
+    Mother Fang (471): Petopia says Bite 1 (17253), HPJ lists no taught spell
+    Ukorsbane (266851): Petopia says Bite 1 (17253), HPJ lists no taught spell
+    Vulgara the Insatiable (254589): Petopia says Bite 2 (17255), HPJ lists no taught spell
+    Vuldren Alpha (250874): Petopia says Bite 2 (17255), HPJ lists no taught spell
+    Sri'Skulk (10359): Petopia says Bite 2 (17255), HPJ lists no taught spell
+    Daggerfang (270693): Petopia says Bite 2 (17255), HPJ lists no taught spell
+    Strider Clutchmother (2172): Petopia says Bite 3 (17256), HPJ lists no taught spell
+    Highland Tortoise (260809): Petopia says Bite 4 (17257), HPJ lists no taught spell
+    Highland Spider (260803): Petopia says Bite 4 (17257), HPJ lists no taught spell
+    Giant Moonstrider (272392): Petopia says Bite 8 (17261), HPJ lists no taught spell
+    ... 100 more
+
+Petopia/HPJ teacher disagreements: 17 (Petopia wins, kept for review)
+    Savannah Patriarch (3241): Petopia says Cower 4 (1755), HPJ teaches [1753]
+    Shrike Bat (4861): Petopia says Demoralizing Screech 2 (24577), HPJ teaches [1755, 23145]
+    Ironbeak Owl (7097): Petopia says Demoralizing Screech 3 (24578), HPJ teaches [23147]
+    Carrion Vulture (1809): Petopia says Demoralizing Screech 3 (24578), HPJ teaches [23148]
+    Dark Screecher (8927): Petopia says Demoralizing Screech 3 (24578), HPJ teaches [23148]
+    Monstrous Plaguebat (8602): Petopia says Demoralizing Screech 4 (24579), HPJ teaches [16697]
+    Winterspring Screecher (7456): Petopia says Demoralizing Screech 4 (24579), HPJ teaches [3009, 23148]
+    Loch Crocolisk (1693): Petopia says Dismember 1 (1264758), HPJ teaches [17255]
+    Fleeting Plainstrider (3246): Petopia says Dust Cloud 1 (1265899), HPJ teaches [1742]
+    Sandstrider (4724): Petopia says Dust Cloud 2 (1265901), HPJ teaches [23099]
+    Crazed Sandstrider (4725): Petopia says Dust Cloud 3 (1265902), HPJ teaches [1755, 23099]
+    Tide Crawler (2232): Petopia says Pinch 1 (1264735), HPJ teaches [16828]
+    ... 5 more
+
+Rank count mismatches: 0
+
+Pet level mismatches: 0
+
+Training point mismatches: 0
+
+Family mismatches: 3
+    Aku'mai Snapjaw (4825): Petopia Crab (8), HPJ 21
+    Shriekling Fledgling (253282): Petopia Bird of Prey (26), HPJ 11
+    Vulgara the Insatiable (254589): Petopia Fox (319), HPJ 1
+
+HunterPetJournal spells outside our rank list: 0
+
+Zones with no wiki row: 7 (capital cities, battlegrounds, Forever-only zones stay nil)
+    1453 Stormwind City
+    1454 Orgrimmar
+    1457 Darnassus
+    1458 Undercity
+    1459 Alterac Valley
+    2521 Zephras Isle
+    2548 Riverglades
+
+Wiki zones with no map here: 24 (not carried by HunterPetJournal spots)
+    Azuremyst Isle
+    Eversong Woods
+    Bloodmyst Isle
+    Ghostlands
+    Plaguelands: The Scarlet Enclave
+    Hellfire Peninsula
+    Zangarmarsh
+    Terokkar Forest
+    Nagrand
+    Blade's Edge Mountains
+    Netherstorm
+    Shadowmoon Valley
+    ... 12 more
+
+Wiki zone rows with an unknown colour: 0 (treated as contested, faction stays nil)
+
+Unparsed Petopia lines: 0
+
