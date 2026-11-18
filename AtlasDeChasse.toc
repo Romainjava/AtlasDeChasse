@@ -15,6 +15,7 @@
 
 Locale.lua
 Data\Data.lua
+Data\Secrets.lua
 Themes.lua
 Pet.lua
 Discovery.lua

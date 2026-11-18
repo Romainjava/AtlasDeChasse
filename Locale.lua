@@ -68,6 +68,16 @@ local FRENCH = {
 	["Unknown position"] = "Position inconnue",
 	["Position you saw"] = "Position vue par toi",
 
+	--- Hidden pets tab --------------------------------------------------
+	["Abilities"] = "Techniques",
+	["Hidden pets"] = "Familiers cachés",
+	["Found on Forever"] = "Découverts sur Forever",
+	["Beasts that only appear after a hidden step."] = "Des bêtes qui n'apparaissent qu'après une étape cachée.",
+	["No hidden pet known yet."] = "Aucun familier caché connu pour l'instant.",
+	["Level %d / %d"] = "Niveau %d / %d",
+	["It knows"] = "Il connaît",
+	["Source: %s"] = "Source : %s",
+
 	--- Themes -----------------------------------------------------------
 	["Twilight"] = "Crépuscule",
 	["Night"] = "Nuit",

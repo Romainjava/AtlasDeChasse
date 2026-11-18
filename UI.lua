@@ -99,9 +99,22 @@ local gearButton, closeButton
 local headName, headLevel, headZone
 local scroll, scrollChild, scrollOffset, tableEmpty
 local detailName, detailZone, detailHint
-local mapFrame, mapHint, pinParts
+local detailMap
 local waypointButton, mapButton
 local themeMenu, themeRowList
+
+-- Header tabs: the rank planner, or the hidden pets page.
+local VIEWS = {
+	{ key = "abilities", label = "Abilities" },
+	{ key = "secrets", label = "Hidden pets" },
+}
+local view = "abilities"
+local tabs = {}
+local secretList, secretBody, secretRows, secretSelected
+local secretName, secretTitle, secretZone, secretSteps, secretAbilities, secretSource
+local secretMap, secretPills, secretButtons = nil, {}, {}
+local SECRET_STEPS_MAX = 6
+local SECRET_PANEL_W = 224
 
 -----------------------------------------------------------------------------
 -- Paint helpers
@@ -188,6 +201,35 @@ end
 local function AbilityName(ability)
 	if not ability then return "" end
 	return ability.localName or ability.en or "?"
+end
+
+-- A small zone map (the detail panel's, the hidden pet page's): the zone art,
+-- a pin, and a hint in place of the art when the client gives none.
+local function NewMiniMap(parent)
+	local mini = { tiles = {}, pin = {} }
+	local holder = CreateFrame("Frame", nil, parent)
+	holder:SetSize(MAP_W, MAP_H)
+	local background = PaintedTexture(holder, "BACKGROUND", "alt")
+	background:SetAllPoints()
+	local edge = PaintedTexture(holder, "BACKGROUND", "line", nil, -1)
+	edge:SetPoint("TOPLEFT", -1, 1)
+	edge:SetPoint("BOTTOMRIGHT", 1, -1)
+	mini.frame = holder
+	mini.hint = PaintedText(holder, "small", "muted")
+	mini.hint:SetPoint("TOPLEFT", holder, "TOPLEFT", 8, -8)
+	mini.hint:SetWidth(MAP_W - 16)
+	mini.hint:SetJustifyH("LEFT")
+	mini.hint:SetWordWrap(true)
+	-- the pin: an accent ring, a hole of the background colour, an accent dot
+	for _, part in ipairs({ { 14, 2, "accent" }, { 9, 3, "bg" }, { 5, 4, "accent" } }) do
+		local disc = holder:CreateTexture(nil, "OVERLAY", nil, part[2])
+		disc:SetTexture(DISC)
+		disc:SetSize(part[1], part[1])
+		disc:Hide()
+		painters[#painters + 1] = { object = disc, kind = "vertex", token = part[3] }
+		mini.pin[#mini.pin + 1] = disc
+	end
+	return mini
 end
 
 -----------------------------------------------------------------------------
@@ -389,6 +431,28 @@ local function BuildMain()
 	closeButton.label:SetText("×")
 	closeButton:SetScript("OnClick", function() ns.Close() end)
 
+	-- Tabs, right-aligned before the gear: the last one sits closest to it.
+	local anchor, anchorPoint, offsetX = gearButton, "LEFT", -12
+	for index = #VIEWS, 1, -1 do
+		local definition = VIEWS[index]
+		local tab = CreateFrame("Button", nil, header)
+		tab.key = definition.key
+		tab:SetHeight(24) -- before the pill, which takes its ends from the height
+		tab.hover = Pill(tab, "HIGHLIGHT")
+		tab.label = tab:CreateFontString(nil, "ARTWORK", Font("label"))
+		tab.label:SetPoint("CENTER", 0, 1)
+		tab.label:SetText(L[definition.label])
+		tab:SetWidth(math.floor((tab.label:GetStringWidth() or 0) + 20))
+		tab:SetPoint("RIGHT", anchor, anchorPoint, offsetX, 0)
+		tab.underline = tab:CreateTexture(nil, "ARTWORK")
+		tab.underline:SetPoint("BOTTOMLEFT", 6, -2)
+		tab.underline:SetPoint("BOTTOMRIGHT", -6, -2)
+		tab.underline:SetHeight(2)
+		tab:SetScript("OnClick", function(self) UI.SelectView(self.key) end)
+		table.insert(tabs, 1, tab)
+		anchor, anchorPoint, offsetX = tab, "LEFT", -2
+	end
+
 	-- Filter chips: pills sized to their label.
 	local chipRow = CreateFrame("Frame", nil, main)
 	chipRow:SetPoint("TOPLEFT", main, "TOPLEFT", 0, -HEADER_H)
@@ -517,37 +581,11 @@ local function BuildMain()
 	detail:SetPoint("BOTTOMRIGHT", main, "BOTTOMRIGHT", -12, 12)
 	frame.detail = detail
 
-	mapFrame = CreateFrame("Frame", nil, detail)
-	mapFrame:SetSize(MAP_W, MAP_H)
-	mapFrame:SetPoint("TOPLEFT", detail, "TOPLEFT", 0, 0)
-	local mapBackground = PaintedTexture(mapFrame, "BACKGROUND", "alt")
-	mapBackground:SetAllPoints()
-	local mapEdge = PaintedTexture(mapFrame, "BACKGROUND", "line", nil, -1)
-	mapEdge:SetPoint("TOPLEFT", -1, 1)
-	mapEdge:SetPoint("BOTTOMRIGHT", 1, -1)
-	mapHint = PaintedText(mapFrame, "small", "muted")
-	mapHint:SetPoint("TOPLEFT", mapFrame, "TOPLEFT", 8, -8)
-	mapHint:SetWidth(MAP_W - 16)
-	mapHint:SetJustifyH("LEFT")
-	mapHint:SetWordWrap(true)
-
-	pinParts = {}
-	local ring = mapFrame:CreateTexture(nil, "OVERLAY", nil, 2)
-	ring:SetTexture(DISC)
-	ring:SetSize(14, 14)
-	local hole = mapFrame:CreateTexture(nil, "OVERLAY", nil, 3)
-	hole:SetTexture(DISC)
-	hole:SetSize(9, 9)
-	local dot = mapFrame:CreateTexture(nil, "OVERLAY", nil, 4)
-	dot:SetTexture(DISC)
-	dot:SetSize(5, 5)
-	pinParts.ring, pinParts.hole, pinParts.dot = ring, hole, dot
-	ring:Hide()
-	hole:Hide()
-	dot:Hide()
+	detailMap = NewMiniMap(detail)
+	detailMap.frame:SetPoint("TOPLEFT", detail, "TOPLEFT", 0, 0)
 
 	detailName = PaintedText(detail, "name", "npc")
-	detailName:SetPoint("TOPLEFT", mapFrame, "BOTTOMLEFT", 0, -12)
+	detailName:SetPoint("TOPLEFT", detailMap.frame, "BOTTOMLEFT", 0, -12)
 	detailName:SetWidth(MAP_W)
 	detailName:SetJustifyH("LEFT")
 	detailZone = PaintedText(detail, "small", "place")
@@ -569,6 +607,155 @@ local function BuildMain()
 	mapButton = PillButton(detail, MAP_W, L["Show on map"], false)
 	mapButton:SetPoint("BOTTOMLEFT", detail, "BOTTOMLEFT", 0, 0)
 	mapButton:SetScript("OnClick", function() UI.OpenMap(ns.state and ns.state.beast) end)
+end
+
+-- The hidden pets page: a list over the sidebar, the chosen pet's steps and
+-- map over the rest. Both cover what they hide, mouse included.
+local function Cover(owner, token)
+	local cover = CreateFrame("Frame", nil, owner)
+	cover:SetFrameLevel((owner:GetFrameLevel() or 1) + 30)
+	cover:EnableMouse(true)
+	if cover.EnableMouseWheel then cover:EnableMouseWheel(true) end
+	local background = PaintedTexture(cover, "BACKGROUND", token)
+	background:SetAllPoints()
+	cover:Hide()
+	return cover
+end
+
+local function BuildSecrets()
+	local list = ns.secrets or {}
+
+	secretList = Cover(frame, "sidebar")
+	secretList:SetPoint("TOPLEFT", frame.sidebar, "TOPLEFT")
+	secretList:SetPoint("BOTTOMRIGHT", frame.sidebar, "BOTTOMRIGHT")
+	local edge = Hairline(secretList)
+	edge:SetPoint("TOPRIGHT")
+	edge:SetPoint("BOTTOMRIGHT")
+	edge:SetWidth(1)
+	local listHead = PaintedText(secretList, "label", "muted")
+	listHead:SetPoint("TOPLEFT", secretList, "TOPLEFT", 14, -16)
+	listHead:SetText(L["Found on Forever"])
+	secretRows = {}
+	for index, secret in ipairs(list) do
+		local row = CreateFrame("Button", nil, secretList)
+		row:SetHeight(44)
+		row:SetPoint("TOPLEFT", secretList, "TOPLEFT", 0, -(36 + (index - 1) * 46))
+		row:SetPoint("TOPRIGHT", secretList, "TOPRIGHT", -1, -(36 + (index - 1) * 46))
+		row.secret = secret
+		local hover = PaintedTexture(row, "HIGHLIGHT", "text", 0.05)
+		hover:SetAllPoints()
+		row.selected = row:CreateTexture(nil, "BACKGROUND")
+		row.selected:SetAllPoints()
+		row.bar = row:CreateTexture(nil, "BACKGROUND", nil, 1)
+		row.bar:SetPoint("TOPLEFT")
+		row.bar:SetPoint("BOTTOMLEFT")
+		row.bar:SetWidth(3)
+		row.name = PaintedText(row, "name", "npc")
+		row.name:SetPoint("TOPLEFT", row, "TOPLEFT", 14, -7)
+		row.info = PaintedText(row, "small", "muted")
+		row.info:SetPoint("TOPLEFT", row.name, "BOTTOMLEFT", 0, -4)
+		row.info:SetWidth(SIDEBAR_W - 28)
+		row.info:SetJustifyH("LEFT")
+		row:SetScript("OnClick", function(self)
+			secretSelected = self.secret
+			UI.RenderSecrets()
+		end)
+		secretRows[index] = row
+	end
+	secretSelected = list[1]
+
+	secretBody = Cover(frame.main, "bg")
+	secretBody:SetPoint("TOPLEFT", frame.main, "TOPLEFT", 0, -HEADER_H)
+	secretBody:SetPoint("BOTTOMRIGHT", frame.main, "BOTTOMRIGHT")
+	local headLine = Hairline(secretBody)
+	headLine:SetPoint("TOPLEFT")
+	headLine:SetPoint("TOPRIGHT")
+	headLine:SetHeight(1)
+	local columnW = W - SIDEBAR_W - 1 - SECRET_PANEL_W - 32
+
+	secretName = PaintedText(secretBody, "name", "npc")
+	secretName:SetPoint("TOPLEFT", secretBody, "TOPLEFT", 16, -14)
+	secretName:SetWidth(columnW)
+	secretName:SetJustifyH("LEFT")
+	secretTitle = PaintedText(secretBody, "small", "muted")
+	secretTitle:SetPoint("TOPLEFT", secretName, "BOTTOMLEFT", 0, -3)
+	secretTitle:SetWidth(columnW)
+	secretTitle:SetJustifyH("LEFT")
+	secretZone = PaintedText(secretBody, "small", "place")
+	secretZone:SetPoint("TOPLEFT", secretTitle, "BOTTOMLEFT", 0, -3)
+	secretZone:SetWidth(columnW)
+	secretZone:SetJustifyH("LEFT")
+
+	-- Requirement pills: the hunter's level, the item in the bags.
+	local previous
+	for index = 1, 2 do
+		local pill = CreateFrame("Frame", nil, secretBody)
+		pill:SetHeight(CHIP_H)
+		pill.pill = Pill(pill, "BACKGROUND")
+		pill.label = pill:CreateFontString(nil, "ARTWORK", Font("label"))
+		pill.label:SetPoint("CENTER")
+		if previous then
+			pill:SetPoint("LEFT", previous, "RIGHT", 6, 0)
+		else
+			pill:SetPoint("TOPLEFT", secretZone, "BOTTOMLEFT", 0, -10)
+		end
+		secretPills[index] = pill
+		previous = pill
+	end
+
+	-- Numbered steps, each under the one before so wrapped lines push the next.
+	secretSteps = {}
+	local above = secretPills[1]
+	for index = 1, SECRET_STEPS_MAX do
+		local step = {}
+		step.text = PaintedText(secretBody, "body", "dim")
+		step.text:SetPoint("TOPLEFT", above, "BOTTOMLEFT", index == 1 and 28 or 0, index == 1 and -14 or -10)
+		step.text:SetWidth(columnW - 28)
+		step.text:SetJustifyH("LEFT")
+		step.text:SetWordWrap(true)
+		step.disc = secretBody:CreateTexture(nil, "BORDER")
+		step.disc:SetTexture(DISC)
+		painters[#painters + 1] = { object = step.disc, kind = "vertex", token = "alt" }
+		step.disc:SetSize(20, 20)
+		step.disc:SetPoint("TOPRIGHT", step.text, "TOPLEFT", -8, 3)
+		step.number = PaintedText(secretBody, "label", "text")
+		step.number:SetPoint("CENTER", step.disc, "CENTER", 0, 0)
+		step.number:SetText(tostring(index))
+		secretSteps[index] = step
+		above = step.text
+	end
+
+	-- Right panel: the map, what the pet knows, the source, the two buttons.
+	local panel = PaintedTexture(secretBody, "BACKGROUND", "panel", nil, 1)
+	panel:SetPoint("TOPLEFT", secretBody, "TOPRIGHT", -SECRET_PANEL_W, -1)
+	panel:SetPoint("BOTTOMRIGHT")
+	local separator = Hairline(secretBody)
+	separator:SetPoint("TOPLEFT", panel, "TOPLEFT")
+	separator:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT")
+	separator:SetWidth(1)
+	secretMap = NewMiniMap(secretBody)
+	secretMap.frame:SetPoint("TOPLEFT", panel, "TOPLEFT", 12, -12)
+	local knows = PaintedText(secretBody, "label", "muted")
+	knows:SetPoint("TOPLEFT", secretMap.frame, "BOTTOMLEFT", 0, -12)
+	knows:SetText(L["It knows"])
+	secretAbilities = PaintedText(secretBody, "body", "spell")
+	secretAbilities:SetPoint("TOPLEFT", knows, "BOTTOMLEFT", 0, -5)
+	secretAbilities:SetWidth(MAP_W)
+	secretAbilities:SetJustifyH("LEFT")
+	secretAbilities:SetSpacing(3)
+	secretSource = PaintedText(secretBody, "small", "muted")
+	secretSource:SetPoint("TOPLEFT", secretAbilities, "BOTTOMLEFT", 0, -10)
+	secretSource:SetWidth(MAP_W)
+	secretSource:SetJustifyH("LEFT")
+	secretSource:SetWordWrap(true)
+
+	local waypoint = PillButton(secretBody, MAP_W, L["Arrow + pin"], true)
+	waypoint:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 12, 12 + BUTTON_H + 8)
+	waypoint:SetScript("OnClick", function() UI.PlaceWaypoint(UI.SecretTarget(secretSelected)) end)
+	local show = PillButton(secretBody, MAP_W, L["Show on map"], false)
+	show:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 12, 12)
+	show:SetScript("OnClick", function() UI.OpenMap(UI.SecretTarget(secretSelected)) end)
+	secretButtons = { waypoint, show }
 end
 
 function UI.Build()
@@ -600,6 +787,7 @@ function UI.Build()
 
 	BuildSidebar()
 	BuildMain()
+	BuildSecrets()
 
 	if type(UISpecialFrames) == "table" then
 		local named = true
@@ -697,35 +885,40 @@ function UI.Paint()
 		end
 	end
 
-	-- Pin drawn over the map art.
-	local ring = pinParts and pinParts.ring
-	if ring then
-		for part, token in pairs({ ring = "accent", hole = "bg", dot = "accent" }) do
-			local r, g, b = ns.Token(token)
-			pinParts[part]:SetVertexColor(r, g, b, 1)
-		end
+	-- Header tabs: the open one in full text over an accent underline.
+	for _, tab in ipairs(tabs) do
+		local open = tab.key == view
+		SetTextColor(tab.label, open and "text" or "dim")
+		tab.underline:SetShown(open)
+		SetTextureColor(tab.underline, "accent")
+		SetPillColor(tab.hover, "text", 0.06)
 	end
+
+	-- Hidden pets: the chosen one carries the accent bar; requirement pills
+	-- are green when met, red when not.
+	for _, row in ipairs(secretRows or {}) do
+		local selected = row.secret == secretSelected
+		row.selected:SetShown(selected)
+		row.bar:SetShown(selected)
+		SetTextureColor(row.selected, "accent", 0.10)
+		SetTextureColor(row.bar, "accent")
+	end
+	for _, pill in ipairs(secretPills) do
+		SetPillColor(pill.pill, "alt")
+		SetTextColor(pill.label, pill.met and "ok" or "danger")
+	end
+	for _, button in ipairs(secretButtons) do PaintPillButton(button) end
 end
 
 -----------------------------------------------------------------------------
 -- Beast card of the right panel
 -----------------------------------------------------------------------------
 
-local function HidePin()
-	for _, part in ipairs({ pinParts.ring, pinParts.hole, pinParts.dot }) do part:Hide() end
-end
-
 -- The zone map is a grid of tiles (row by row, usually 256 px) covering a
 -- layer of layerWidth x layerHeight (1002 x 668). Each tile is scaled into the
 -- mini map; the last column and row are cropped to the layer's edge.
-local mapTiles = {}
-
-local function HideMapArt()
-	for _, tile in ipairs(mapTiles) do tile:Hide() end
-end
-
--- Draws the tiles of `layer`; false when there is nothing to draw.
-local function DrawMapArt(layer, textures)
+-- Draws the tiles of `layer` into `mini`; false when there is nothing to draw.
+local function DrawMapArt(mini, layer, textures)
 	local layerW, layerH = tonumber(layer.layerWidth), tonumber(layer.layerHeight)
 	local tileW, tileH = tonumber(layer.tileWidth), tonumber(layer.tileHeight)
 	if not (layerW and layerH and tileW and tileH) or layerW <= 0 or layerH <= 0 or tileW <= 0 or tileH <= 0 then
@@ -738,44 +931,45 @@ local function DrawMapArt(layer, textures)
 		local shownW = math.min(tileW, layerW - column * tileW)
 		local shownH = math.min(tileH, layerH - row * tileH)
 		if shownW > 0 and shownH > 0 then
-			local tile = mapTiles[index]
+			local tile = mini.tiles[index]
 			if not tile then
-				tile = mapFrame:CreateTexture(nil, "BORDER")
-				mapTiles[index] = tile
+				tile = mini.frame:CreateTexture(nil, "BORDER")
+				mini.tiles[index] = tile
 			end
 			tile:SetTexture(fileID)
 			tile:SetTexCoord(0, shownW / tileW, 0, shownH / tileH)
 			tile:SetSize(shownW * scaleX, shownH * scaleY)
 			tile:ClearAllPoints()
-			tile:SetPoint("TOPLEFT", mapFrame, "TOPLEFT", column * tileW * scaleX, -row * tileH * scaleY)
+			tile:SetPoint("TOPLEFT", mini.frame, "TOPLEFT", column * tileW * scaleX, -row * tileH * scaleY)
 			tile:Show()
 		end
 	end
 	return true
 end
 
-local function UpdateDetailMap(entry)
-	HideMapArt()
-	HidePin()
-	mapHint:Show()
+-- entry = { map, x, y (0-100), zoneName } or nil.
+local function ShowMiniMap(mini, entry)
+	for _, tile in ipairs(mini.tiles) do tile:Hide() end
+	for _, part in ipairs(mini.pin) do part:Hide() end
+	mini.hint:Show()
 	if not entry then
-		mapHint:SetText(L["No map for this beast."])
+		mini.hint:SetText(L["No map for this beast."])
 		return
 	end
-	mapHint:SetText(entry.zoneName or "")
+	mini.hint:SetText(entry.zoneName or "")
 	if not (entry.map and entry.x and entry.y) then return end
 	if not (C_Map and C_Map.GetMapArtLayers and C_Map.GetMapArtLayerTextures) then return end
 	local okLayers, layers = pcall(C_Map.GetMapArtLayers, entry.map)
 	if not okLayers or type(layers) ~= "table" or not layers[1] then return end
 	local okTiles, tiles = pcall(C_Map.GetMapArtLayerTextures, entry.map, 1)
 	if not okTiles or type(tiles) ~= "table" or not tiles[1] then return end
-	if not DrawMapArt(layers[1], tiles) then return end
-	mapHint:Hide()
+	if not DrawMapArt(mini, layers[1], tiles) then return end
+	mini.hint:Hide()
 	local px = math.floor((entry.x / 100) * MAP_W + 0.5)
 	local py = math.floor((entry.y / 100) * MAP_H + 0.5)
-	for _, part in ipairs({ pinParts.ring, pinParts.hole, pinParts.dot }) do
+	for _, part in ipairs(mini.pin) do
 		part:ClearAllPoints()
-		part:SetPoint("CENTER", mapFrame, "TOPLEFT", px, -py)
+		part:SetPoint("CENTER", mini.frame, "TOPLEFT", px, -py)
 		part:Show()
 	end
 end
@@ -948,8 +1142,135 @@ function UI.Render()
 		waypointButton:Hide()
 		mapButton:Hide()
 	end
-	UpdateDetailMap(beast)
+	ShowMiniMap(detailMap, beast)
 
+	UI.RenderSecrets()
+	UI.Paint()
+end
+
+-----------------------------------------------------------------------------
+-- Hidden pets page
+-----------------------------------------------------------------------------
+
+-- The record's text in the client's language; English clients get no line
+-- when only French is known.
+local function Pick(record)
+	if type(record) ~= "table" then return nil end
+	if ns.french then return record.fr or record.en end
+	return record.en
+end
+
+local function Readable(value)
+	if value == nil or (issecretvalue and issecretvalue(value)) then return nil end
+	return value
+end
+
+local function ItemName(item)
+	if C_Item and C_Item.GetItemNameByID then
+		local ok, name = pcall(C_Item.GetItemNameByID, item.id)
+		name = ok and Readable(name)
+		if type(name) == "string" and name ~= "" then return name end
+	end
+	return Pick(item) or ("item " .. tostring(item.id))
+end
+
+local function ItemCount(itemID)
+	local reader = (C_Item and C_Item.GetItemCount) or GetItemCount
+	if type(reader) ~= "function" then return nil end
+	local ok, count = pcall(reader, itemID)
+	count = ok and Readable(count)
+	return type(count) == "number" and count or nil
+end
+
+local function SecretAbilityName(ability)
+	local name = C_Spell and C_Spell.GetSpellName and Readable(C_Spell.GetSpellName(ability.spell))
+	if type(name) ~= "string" or name == "" then name = Pick(ability) or "?" end
+	if ability.rank then name = L["%s %s"]:format(name, tostring(ability.rank)) end
+	return name
+end
+
+-- The point the map buttons take: { map, x, y, name, zoneName }.
+function UI.SecretTarget(secret)
+	if not (secret and secret.spot) then return nil end
+	return {
+		map = secret.spot.map, x = secret.spot.x, y = secret.spot.y,
+		name = Pick(secret.name) or "?",
+		zoneName = ns.Planner.ZoneName(secret.spot.map, secret.zoneEn),
+	}
+end
+
+function UI.SelectView(key)
+	if key == view then return end
+	view = key
+	UI.CloseThemeMenu()
+	UI.Render()
+end
+
+function UI.RenderSecrets()
+	if not secretBody then return end
+	local open = view == "secrets"
+	secretList:SetShown(open)
+	secretBody:SetShown(open)
+	if not open then return end
+
+	titleName:SetText(L["Hidden pets"])
+	titleRank:SetText("")
+	subtitle:SetText(L["Beasts that only appear after a hidden step."])
+	learnedBadge:Hide()
+
+	for _, row in ipairs(secretRows) do
+		local secret = row.secret
+		row.name:SetText(Pick(secret.name) or "?")
+		row.info:SetText(table.concat({
+			ns.Pet.DisplayName(secret.family),
+			L["level %d"]:format(secret.level),
+			ns.Planner.ZoneName(secret.spot and secret.spot.map, secret.zoneEn) or "",
+		}, " · "))
+	end
+
+	local secret = secretSelected
+	local target = UI.SecretTarget(secret)
+	secretName:SetText(secret and Pick(secret.name) or L["No hidden pet known yet."])
+	local title = secret and Pick(secret.title)
+	secretTitle:SetText(title and ("<" .. title .. ">") or "")
+	secretTitle:SetShown(title ~= nil)
+	secretZone:SetText(target and (target.zoneName .. " · " .. ns.Coord(target.x) .. " " .. ns.Coord(target.y)) or "")
+
+	local level = ns.PlayerLevel and ns.PlayerLevel() or nil
+	local item = secret and secret.item
+	local count = item and ItemCount(item.id)
+	local itemName = item and ItemName(item)
+	local pills = {
+		secret and { text = L["Level %d / %d"]:format(level or 0, secret.level), met = (level or 0) >= secret.level },
+		item and {
+			text = ("%s %s / %d"):format(itemName, count and tostring(count) or "?", item.count),
+			met = (count or 0) >= item.count,
+		},
+	}
+	for index, pill in ipairs(secretPills) do
+		local want = pills[index]
+		pill:SetShown(want ~= nil)
+		if want then
+			pill.label:SetText(want.text)
+			pill:SetWidth(math.floor((pill.label:GetStringWidth() or 0) + 22))
+			pill.met = want.met
+		end
+	end
+
+	local steps = secret and secret.steps or {}
+	for index, step in ipairs(secretSteps) do
+		local text = Pick(steps[index])
+		if text and itemName then text = text:gsub("%%ITEM%%", itemName) end
+		step.text:SetText(text or "")
+		for _, part in ipairs({ step.text, step.disc, step.number }) do part:SetShown(text ~= nil) end
+	end
+
+	local names = {}
+	for _, ability in ipairs(secret and secret.abilities or {}) do names[#names + 1] = SecretAbilityName(ability) end
+	secretAbilities:SetText(table.concat(names, "\n"))
+	secretSource:SetText(secret and secret.source and L["Source: %s"]:format(secret.source) or "")
+	for _, button in ipairs(secretButtons) do button:SetShown(target ~= nil) end
+	ShowMiniMap(secretMap, target)
 	UI.Paint()
 end
 

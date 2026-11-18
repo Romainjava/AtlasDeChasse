@@ -21,6 +21,7 @@ local EVENTS = {
 	"PLAYER_TARGET_CHANGED",
 	"UPDATE_MOUSEOVER_UNIT",
 	"CHAT_MSG_SYSTEM",
+	"BAG_UPDATE_DELAYED",
 }
 
 -- What the window shows: the pet, the plan, the chosen rank, its teachers.
@@ -332,6 +333,11 @@ local function OnEvent(_, event, arg1)
 		NoteUnit("target")
 	elseif event == "UPDATE_MOUSEOVER_UNIT" then
 		NoteUnit("mouseover")
+	elseif event == "BAG_UPDATE_DELAYED" then
+		-- only the hidden pets page counts items, and only while it is open
+		if ns.ui and ns.ui.RenderSecrets and ns.ui.frame and ns.ui.frame:IsShown() then
+			ns.ui.RenderSecrets()
+		end
 	elseif event == "UNIT_PET" then
 		if arg1 == nil or arg1 == "player" then ns.QueueRefresh() end
 	elseif event == "UNIT_LEVEL" then
