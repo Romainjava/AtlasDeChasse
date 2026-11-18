@@ -9,13 +9,14 @@ local UI = {}
 ns.ui = UI
 
 -----------------------------------------------------------------------------
--- Measurements (the mock is 820x480)
+-- Measurements (the mock is 880x512)
 -----------------------------------------------------------------------------
 
-local W, H = 820, 480
+local W, H = 880, 512
 local SIDEBAR_W = 230
 local CARD_H = 68
 local HEADER_H = 62
+local TAB_H = 33
 local CHIPS_H = 36
 local CHIP_H = 22
 local TABLE_HEAD_H = 26
@@ -102,6 +103,7 @@ local detailName, detailZone, detailHint
 local detailMap
 local waypointButton, mapButton
 local themeMenu, themeRowList
+local chipLine
 
 -- Header tabs: the rank planner, or the hidden pets page.
 local VIEWS = {
@@ -431,11 +433,16 @@ local function BuildMain()
 	closeButton.label:SetText("×")
 	closeButton:SetScript("OnClick", function() ns.Close() end)
 
-	-- Tabs, right-aligned before the gear: the last one sits closest to it.
-	local anchor, anchorPoint, offsetX = gearButton, "LEFT", -12
-	for index = #VIEWS, 1, -1 do
+	-- Tabs in their own strip under the header, left-aligned from the edge.
+	local tabRow = CreateFrame("Frame", nil, main)
+	tabRow:SetPoint("TOPLEFT", main, "TOPLEFT", 0, -HEADER_H)
+	tabRow:SetPoint("TOPRIGHT", main, "TOPRIGHT", 0, -HEADER_H)
+	tabRow:SetHeight(TAB_H)
+	frame.tabRow = tabRow
+	local previous
+	for index = 1, #VIEWS do
 		local definition = VIEWS[index]
-		local tab = CreateFrame("Button", nil, header)
+		local tab = CreateFrame("Button", nil, tabRow)
 		tab.key = definition.key
 		tab:SetHeight(24) -- before the pill, which takes its ends from the height
 		tab.hover = Pill(tab, "HIGHLIGHT")
@@ -443,20 +450,28 @@ local function BuildMain()
 		tab.label:SetPoint("CENTER", 0, 1)
 		tab.label:SetText(L[definition.label])
 		tab:SetWidth(math.floor((tab.label:GetStringWidth() or 0) + 20))
-		tab:SetPoint("RIGHT", anchor, anchorPoint, offsetX, 0)
+		if previous then
+			tab:SetPoint("LEFT", previous, "RIGHT", 2, 0)
+		else
+			tab:SetPoint("LEFT", tabRow, "LEFT", 16, 0)
+		end
 		tab.underline = tab:CreateTexture(nil, "ARTWORK")
 		tab.underline:SetPoint("BOTTOMLEFT", 6, -2)
 		tab.underline:SetPoint("BOTTOMRIGHT", -6, -2)
 		tab.underline:SetHeight(2)
 		tab:SetScript("OnClick", function(self) UI.SelectView(self.key) end)
-		table.insert(tabs, 1, tab)
-		anchor, anchorPoint, offsetX = tab, "LEFT", -2
+		tabs[index] = tab
+		previous = tab
 	end
+	local tabLine = Hairline(main)
+	tabLine:SetPoint("TOPLEFT", main, "TOPLEFT", 0, -(HEADER_H + TAB_H))
+	tabLine:SetPoint("TOPRIGHT", main, "TOPRIGHT", 0, -(HEADER_H + TAB_H))
+	tabLine:SetHeight(1)
 
 	-- Filter chips: pills sized to their label.
 	local chipRow = CreateFrame("Frame", nil, main)
-	chipRow:SetPoint("TOPLEFT", main, "TOPLEFT", 0, -HEADER_H)
-	chipRow:SetPoint("TOPRIGHT", main, "TOPRIGHT", 0, -HEADER_H)
+	chipRow:SetPoint("TOPLEFT", main, "TOPLEFT", 0, -(HEADER_H + TAB_H))
+	chipRow:SetPoint("TOPRIGHT", main, "TOPRIGHT", 0, -(HEADER_H + TAB_H))
 	chipRow:SetHeight(CHIPS_H)
 	frame.chipRow = chipRow
 	local showFaction = ns.Planner.HasZoneFactions()
@@ -482,13 +497,13 @@ local function BuildMain()
 			x = x + width + 6
 		end
 	end
-	local chipLine = Hairline(main)
-	chipLine:SetPoint("TOPLEFT", main, "TOPLEFT", 0, -(HEADER_H + CHIPS_H))
-	chipLine:SetPoint("TOPRIGHT", main, "TOPRIGHT", 0, -(HEADER_H + CHIPS_H))
+	chipLine = Hairline(main)
+	chipLine:SetPoint("TOPLEFT", main, "TOPLEFT", 0, -(HEADER_H + TAB_H + CHIPS_H))
+	chipLine:SetPoint("TOPRIGHT", main, "TOPRIGHT", 0, -(HEADER_H + TAB_H + CHIPS_H))
 	chipLine:SetHeight(1)
 
 	-- Beast table: a header row on the panel colour, then the rows.
-	local tableTop = HEADER_H + CHIPS_H + 1
+	local tableTop = HEADER_H + TAB_H + CHIPS_H + 1
 	local tableHead = PaintedTexture(main, "BACKGROUND", "panel", nil, 1)
 	tableHead:SetPoint("TOPLEFT", main, "TOPLEFT", 0, -tableTop)
 	tableHead:SetPoint("TOPRIGHT", main, "TOPLEFT", TABLE_W, -tableTop)
@@ -665,7 +680,7 @@ local function BuildSecrets()
 	secretSelected = list[1]
 
 	secretBody = Cover(frame.main, "bg")
-	secretBody:SetPoint("TOPLEFT", frame.main, "TOPLEFT", 0, -HEADER_H)
+	secretBody:SetPoint("TOPLEFT", frame.main, "TOPLEFT", 0, -(HEADER_H + TAB_H))
 	secretBody:SetPoint("BOTTOMRIGHT", frame.main, "BOTTOMRIGHT")
 	local headLine = Hairline(secretBody)
 	headLine:SetPoint("TOPLEFT")
@@ -1211,6 +1226,9 @@ function UI.RenderSecrets()
 	local open = view == "secrets"
 	secretList:SetShown(open)
 	secretBody:SetShown(open)
+	-- The rank filters mean nothing here: the strip goes back to the tabs alone.
+	frame.chipRow:SetShown(not open)
+	chipLine:SetShown(not open)
 	if not open then return end
 
 	titleName:SetText(L["Hidden pets"])
