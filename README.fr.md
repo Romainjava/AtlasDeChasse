@@ -6,6 +6,12 @@ Atlas de dressage des familiers de chasseur pour World of Warcraft : Forever 1.6
 
 L'addon reconnaît votre familier actuel, calcule les rangs de compétence qu'il peut apprendre maintenant ou plus tard, et liste toutes les bêtes qui enseignent le rang choisi, avec leur niveau, leur zone et un repère sur la carte.
 
+![La fenêtre en thème Crépuscule : les rangs du familier à gauche, les bêtes qui enseignent le rang choisi, et l'emplacement de la bête sur la carte de la zone](docs/window-twilight.jpg)
+
+| Montrer sur la carte | Thème Parchemin |
+| --- | --- |
+| ![Le point de la bête sur la carte du monde](docs/world-map-pin.jpg) | ![La fenêtre en thème Parchemin, menu des thèmes ouvert](docs/window-parchment.jpg) |
+
 ## Ce que fait l'addon
 
 - **Votre familier.** Famille, niveau et sorts connus sont lus dans le jeu, par numéro de famille et numéro de sort, donc quelle que soit la langue du client.

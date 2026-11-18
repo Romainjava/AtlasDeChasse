@@ -8,6 +8,14 @@ The addon recognizes your current pet, works out which ability ranks it can lear
 
 The addon shows English on every client except French ones, which get French (and the name "Atlas de chasse").
 
+![The window in the Twilight theme: the pet's ranks on the left, the beasts that teach the chosen rank, and the beast's spot on the zone map](docs/window-twilight.jpg)
+
+| Show on map | Parchment theme |
+| --- | --- |
+| ![The beast's point on the world map](docs/world-map-pin.jpg) | ![The window in the Parchment theme with the theme menu open](docs/window-parchment.jpg) |
+
+*Screenshots from a French client.*
+
 ## What it does
 
 - **Your pet.** Family, level and known spells are read from the game by family ID and spell ID, so it works whatever the client language.
