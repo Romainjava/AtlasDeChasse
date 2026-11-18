@@ -27,7 +27,7 @@ Sans familier sorti, la fenêtre propose de choisir une famille pour parcourir s
 
 ## Installation
 
-1. Copiez le dossier `AtlasDeChasse` dans `World of Warcraft\_forever_\Interface\AddOns\`. Le dossier `tools` n'est pas nécessaire en jeu.
+1. Copiez le dossier `AtlasDeChasse` dans `World of Warcraft\_forever_\Interface\AddOns\`.
 2. Quittez complètement le jeu et relancez-le : un `/reload` ne charge pas un nouveau dossier d'addon.
 
 ## Commandes
@@ -43,7 +43,9 @@ Clic gauche sur le bouton de minicarte : ouvre la fenêtre. Clic droit : menu de
 
 ## Données
 
-`Data/Data.lua` est généré par `tools/build-data.js` et ne doit pas être modifié à la main. Il contient 33 compétences, 156 rangs (tous avec leur numéro de sort), 419 bêtes qui enseignent, leurs emplacements et la faction des zones.
+L'addon n'a besoin d'aucun autre addon en jeu. TomTom est utilisé s'il est installé, sinon le repère de carte du jeu.
+
+`Data/Data.lua` contient 33 compétences, 156 rangs (tous avec leur numéro de sort), 419 bêtes qui enseignent, leurs emplacements et la faction des zones. Il est généré par un outil de construction qui n'est pas publié ici, et ne doit pas être modifié à la main.
 
 Sources, par ordre de priorité :
 
@@ -54,20 +56,6 @@ Sources, par ordre de priorité :
 - **Polestar** (`Polestar_frFR`) : noms français des bêtes.
 
 Les noms et textes du jeu appartiennent à Blizzard Entertainment.
-
-### Régénérer les données
-
-Il faut [Bun](https://bun.sh) et les addons HunterPetJournal et Polestar installés dans le client (chemin par défaut : `C:\Program Files (x86)\World of Warcraft\_forever_\Interface\AddOns`, modifiable avec la variable d'environnement `WOW_ADDONS_DIR`).
-
-```sh
-cd tools
-bun install
-bun build-data.js            # reconstruit Data/Data.lua depuis tools/cache
-bun build-data.test.js       # contrôles sur les données générées
-bun build-data.js --refresh  # retélécharge Petopia et le wiki une fois
-```
-
-La construction est déterministe : à cache identique, `Data/Data.lua` est identique octet pour octet. `tools/build-report.txt` liste ce qui manque et les désaccords entre sources.
 
 ## Limites connues
 
