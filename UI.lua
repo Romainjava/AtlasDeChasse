@@ -887,7 +887,7 @@ function UI.Render()
 		titleRank:SetText(L["rank %s"]:format(rankRecord.rank or (state.selection and state.selection.rank) or "?"))
 		subtitle:SetText(RankSubtitle(rankRecord))
 	else
-		titleName:SetText(L["Atlas de chasse"])
+		titleName:SetText(L["Hunter's Atlas"])
 		titleRank:SetText("")
 		if pet.exists and not pet.familyId then
 			subtitle:SetText(L["No family recognized for this pet."])

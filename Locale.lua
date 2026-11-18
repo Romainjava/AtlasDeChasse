@@ -13,7 +13,7 @@ ns.french = ClientLocale() == "frFR"
 
 local FRENCH = {
 	--- Window and sections -----------------------------------------------
-	["Atlas de chasse"] = "Atlas de chasse",
+	["Hunter's Atlas"] = "Atlas de chasse",
 	["Pet"] = "Familier",
 	["Family"] = "Famille",
 	["Beast"] = "Bête",
@@ -82,7 +82,7 @@ local FRENCH = {
 	--- Minimap button, slash command, compartment -----------------------
 	["Minimap button hidden."] = "Bouton de minicarte masqué.",
 	["Minimap button shown."] = "Bouton de minicarte affiché.",
-	["Click: open or close Atlas de chasse"] = "Clic : ouvrir / fermer l'Atlas de chasse",
+	["Click: open or close Hunter's Atlas"] = "Clic : ouvrir / fermer l'Atlas de chasse",
 	["Right-click: themes"] = "Clic droit : thèmes",
 	["Drag: move around the minimap"] = "Glisse : déplacer autour de la minicarte",
 	["Commands:"] = "Commandes :",

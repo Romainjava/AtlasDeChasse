@@ -1,66 +1,72 @@
-# Atlas de chasse
+# Hunter's Atlas
 
-Atlas de dressage des familiers de chasseur pour World of Warcraft : Forever 1.60.1 (`## Interface: 16001`).
+*Version française : [README.fr.md](README.fr.md)*
 
-L'addon reconnaît votre familier actuel, calcule les rangs de compétence qu'il peut apprendre maintenant ou plus tard, et liste toutes les bêtes qui enseignent le rang choisi, avec leur niveau, leur zone et un repère sur la carte.
+A hunter pet-training atlas for World of Warcraft: Forever 1.60.1 (`## Interface: 16001`).
 
-## Ce que fait l'addon
+The addon recognizes your current pet, works out which ability ranks it can learn now or later, and lists every beast that teaches the chosen rank, with its level, zone and a point on the map.
 
-- **Votre familier.** Famille, niveau et sorts connus sont lus dans le jeu, par numéro de famille et numéro de sort, donc quelle que soit la langue du client.
-- **Trois groupes de rangs.**
-  - **Peut apprendre maintenant** : rangs que votre familier peut apprendre à son niveau actuel.
-  - **Plus tard** : rangs qui demandent un niveau plus élevé, avec le niveau requis.
-  - **Dresseur de familiers** : rangs vendus par le dresseur, comme Grondement, Endurance supérieure, Armure naturelle ou les résistances.
-- **Les bêtes qui enseignent un rang.** Nom (en français quand il est connu), niveau (en rouge si la bête est au-dessus de votre niveau), zone et coordonnées.
-- **Filtres.**
-  - **Apprivoisable à ton niveau** : bêtes que vous pouvez apprivoiser maintenant.
-  - **Ma faction** : masque les territoires de l'autre faction.
-  - **Ma zone** : seulement la zone où vous êtes.
-  - **Donjons** : ajoute les bêtes de donjon.
-- **Flèche + repère.** Pose un repère sur la carte du jeu, ou dans TomTom s'il est installé. **Carte** ouvre la carte de la zone.
-- **Rangs appris.** Le message « Vous avez appris… » est enregistré par personnage. L'addon indique alors que le rang est à enseigner dans Dressage des bêtes au lieu de vous envoyer apprivoiser une bête.
-- **Apprentissage en jeu.** Quand vous ciblez ou survolez de près une bête qui enseigne un rang, l'addon retient son nom dans votre langue et l'endroit où vous l'avez vue. La position s'affiche ensuite avec la mention « Position vue par toi ».
-- **Quatre thèmes** : Crépuscule (par défaut), Nuit, Graphite, Parchemin.
-- Bouton de minicarte (déplaçable) et entrée dans le menu des addons.
+The addon shows English on every client except French ones, which get French (and the name "Atlas de chasse").
 
-Sans familier sorti, la fenêtre propose de choisir une famille pour parcourir ses rangs. Sur un personnage qui n'est pas chasseur, l'addon ne fait rien.
+## What it does
+
+- **Your pet.** Family, level and known spells are read from the game by family ID and spell ID, so it works whatever the client language.
+- **Three groups of ranks.**
+  - **Can learn now**: ranks your pet can learn at its current level.
+  - **Later**: ranks that need a higher level, with the level required.
+  - **Pet trainer**: ranks sold by the pet trainer, such as Growl, Great Stamina, Natural Armor or the resistances.
+- **The beasts that teach a rank.** Name, level (red when the beast is above your level), zone and coordinates.
+- **Filters.**
+  - **Tameable at your level**: beasts you can tame right now.
+  - **My faction**: hides the other faction's territories.
+  - **My zone**: only the zone you are in.
+  - **Dungeons**: adds dungeon beasts.
+- **Show on map.** Opens the world map on the beast's zone with a point at its location. Hover it for the name and coordinates; right-click it to remove it. In combat the game does not let addons open the map: press M and it opens on the right zone.
+- **Arrow + pin.** Sets a waypoint with TomTom when it is installed, otherwise with the game's own waypoint.
+- **Learned ranks.** The "You have learned…" message is recorded per character. The addon then tells you to teach the rank from Beast Training instead of sending you off to tame a beast.
+- **Learns as you play.** When you target or closely hover a beast that teaches a rank, the addon remembers its name in your language and where you saw it. The position is then shown with the note "Position you saw".
+- **Four themes**: Twilight (default), Night, Graphite, Parchment.
+- A minimap button (draggable) and an entry in the addon compartment.
+
+With no pet out, the window lets you pick a family to browse its ranks. On a character that is not a hunter, the addon does nothing.
 
 ## Installation
 
-1. Copiez le dossier `AtlasDeChasse` dans `World of Warcraft\_forever_\Interface\AddOns\`.
-2. Quittez complètement le jeu et relancez-le : un `/reload` ne charge pas un nouveau dossier d'addon.
+1. Download the addon. If you use GitHub's **Code → Download ZIP**, the folder inside is named `AtlasDeChasse-main`: rename it to `AtlasDeChasse`.
+2. Copy the `AtlasDeChasse` folder into `World of Warcraft\_forever_\Interface\AddOns\`.
+3. Quit the game completely and start it again: `/reload` does not load a new addon folder.
 
-## Commandes
+## Commands
 
-| Commande | Effet |
+| Command | Effect |
 | --- | --- |
-| `/atlas` (ou `/adc`) | ouvre ou ferme la fenêtre |
-| `/atlas theme <nom>` | change de thème : `crepuscule`, `nuit`, `graphite`, `parchemin` |
-| `/atlas minimap` | affiche ou masque le bouton de minicarte |
-| `/atlas help` | liste des commandes |
+| `/atlas` (or `/adc`) | opens or closes the window |
+| `/atlas theme <name>` | changes the theme: `twilight`, `night`, `graphite`, `parchment` |
+| `/atlas minimap` | shows or hides the minimap button |
+| `/atlas help` | lists the commands |
 
-Clic gauche sur le bouton de minicarte : ouvre la fenêtre. Clic droit : menu des thèmes.
+Left-click the minimap button to open the window. Right-click it for the theme menu.
 
-## Données
+## Data
 
-L'addon n'a besoin d'aucun autre addon en jeu. TomTom est utilisé s'il est installé, sinon le repère de carte du jeu.
+The addon needs no other addon in game. TomTom is used when it is installed, otherwise the game's own map waypoint.
 
-`Data/Data.lua` contient 33 compétences, 156 rangs (tous avec leur numéro de sort), 419 bêtes qui enseignent, leurs emplacements et la faction des zones. Il est généré par un outil de construction qui n'est pas publié ici, et ne doit pas être modifié à la main.
+`Data/Data.lua` holds 33 abilities, 156 ranks (each with its spell ID), 419 teaching beasts, their locations and the faction of each zone. It is generated by a build tool that is not published here, and must not be edited by hand.
 
-Sources, par ordre de priorité :
+Sources, in order of priority:
 
-- **[Petopia Forever](https://www.wow-petopia.com/forever/abilities.php)** : quelles bêtes enseignent quel rang, niveaux du familier, coût en points de dressage.
-- **HunterPetJournal 1.5.0** (addon) : coordonnées des bêtes, numéro de sort de chaque rang, familles et icônes.
-- **[Wowhead Forever](https://www.wowhead.com/forever)** : emplacements des bêtes que les deux sources précédentes ne placent pas, et vérification des rangs enseignés.
-- **[warcraft.wiki.gg](https://warcraft.wiki.gg/wiki/Zones_by_level_(original))** : territoire Alliance, Horde ou contesté de chaque zone.
-- **Polestar** (`Polestar_frFR`) : noms français des bêtes.
+- **[Petopia Forever](https://www.wow-petopia.com/forever/abilities.php)**: which beasts teach which rank, pet levels, training point cost.
+- **HunterPetJournal 1.5.0** (addon): beast coordinates, the spell ID of each rank, families and icons.
+- **[Wowhead Forever](https://www.wowhead.com/forever)**: locations of the beasts the two sources above do not place, and a check of the ranks taught.
+- **[warcraft.wiki.gg](https://warcraft.wiki.gg/wiki/Zones_by_level_(original))**: Alliance, Horde or contested territory of each zone.
+- **Polestar** (`Polestar_frFR`): French beast names.
 
-Les noms et textes du jeu appartiennent à Blizzard Entertainment.
+Game names and texts belong to Blizzard Entertainment.
 
-La fenêtre utilise la police [Inter](https://github.com/rsms/inter), sous licence SIL Open Font License 1.1 (`Media/Fonts/Inter-OFL.txt`).
+The window uses the [Inter](https://github.com/rsms/inter) font, under the SIL Open Font License 1.1 (`Media/Fonts/Inter-OFL.txt`).
 
-## Limites connues
+## Known limits
 
-- 23 bêtes hors donjon n'ont pas encore d'emplacement. L'apprentissage en jeu les complète au fil des parties.
-- La loyauté et les points de dressage du familier ne sont pas disponibles sur ce client : l'addon ne les affiche pas.
-- La position notée en jeu est la vôtre au moment où vous ciblez la bête, à moins de 28 mètres environ.
+- 23 non-dungeon beasts have no location yet. Learning as you play fills them in over time.
+- Pet loyalty and training points are not available on this client, so the addon does not show them.
+- A position noted in game is your own position when you target the beast, within about 28 yards.

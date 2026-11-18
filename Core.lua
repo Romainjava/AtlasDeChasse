@@ -6,7 +6,8 @@ local L = ns.L
 local DB_NAME = "AtlasDeChasseDB"
 local CHAR_DB_NAME = "AtlasDeChasseCharDB"
 local DEFAULT_THEME = "crepuscule"
-local CHAT_PREFIX = "|cffe6ba66Atlas de chasse|r : "
+-- French puts a space before the colon.
+local CHAT_PREFIX = "|cffe6ba66" .. L["Hunter's Atlas"] .. "|r" .. (ns.french and " : " or ": ")
 
 local EVENTS = {
 	"ADDON_LOADED",
@@ -412,8 +413,8 @@ end
 function AtlasDeChasse_OnAddonCompartmentEnter(_, menuButton)
 	if not ns.isHunter or not GameTooltip then return end
 	GameTooltip:SetOwner(menuButton, "ANCHOR_LEFT")
-	GameTooltip:AddLine(L["Atlas de chasse"])
-	GameTooltip:AddLine(L["Click: open or close Atlas de chasse"], 1, 1, 1)
+	GameTooltip:AddLine(L["Hunter's Atlas"])
+	GameTooltip:AddLine(L["Click: open or close Hunter's Atlas"], 1, 1, 1)
 	GameTooltip:AddLine(L["Right-click: themes"], 1, 1, 1)
 	GameTooltip:Show()
 end

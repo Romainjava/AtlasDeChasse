@@ -33,8 +33,8 @@ end
 local function Tooltip(owner)
 	if not GameTooltip then return end
 	GameTooltip:SetOwner(owner, "ANCHOR_LEFT")
-	GameTooltip:AddLine(L["Atlas de chasse"])
-	GameTooltip:AddLine(L["Click: open or close Atlas de chasse"], 1, 1, 1)
+	GameTooltip:AddLine(L["Hunter's Atlas"])
+	GameTooltip:AddLine(L["Click: open or close Hunter's Atlas"], 1, 1, 1)
 	GameTooltip:AddLine(L["Right-click: themes"], 1, 1, 1)
 	GameTooltip:AddLine(L["Drag: move around the minimap"], 1, 1, 1)
 	GameTooltip:AddLine(L["/atlas minimap: show or hide the minimap button"], 0.6, 0.6, 0.6)
