@@ -57,6 +57,8 @@ Sources, par ordre de priorité :
 
 Les noms et textes du jeu appartiennent à Blizzard Entertainment.
 
+La fenêtre utilise la police [Inter](https://github.com/rsms/inter), sous licence SIL Open Font License 1.1 (`Media/Fonts/Inter-OFL.txt`).
+
 ## Limites connues
 
 - 23 bêtes hors donjon n'ont pas encore d'emplacement. L'apprentissage en jeu les complète au fil des parties.

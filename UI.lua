@@ -14,14 +14,66 @@ ns.ui = UI
 
 local W, H = 820, 480
 local SIDEBAR_W = 230
+local CARD_H = 68
 local HEADER_H = 62
-local CHIPS_H = 30
-local DETAIL_W = 220
-local ROW_H = 18
-local BEAST_ROW_H = 20
+local CHIPS_H = 36
+local CHIP_H = 22
+local TABLE_HEAD_H = 26
+local DETAIL_W = 200
+local ROW_H = 21
+local GROUP_HEAD_H = 22
+local GROUP_GAP = 8
+local BEAST_ROW_H = 24
 local BEAST_MAX = 24
-local TABLE_W = 350
+local TABLE_W = 364
 local MAP_W, MAP_H = 200, 133
+local BUTTON_H = 24
+
+-----------------------------------------------------------------------------
+-- Fonts and media. Inter (SIL OFL, Media\Fonts\Inter-OFL.txt) draws "→", which
+-- the game font lacks; if it cannot load, every font falls back to the game's.
+-----------------------------------------------------------------------------
+
+local MEDIA = "Interface\\AddOns\\AtlasDeChasse\\Media\\"
+local DISC = MEDIA .. "disc"
+local WHITE = "Interface\\Buttons\\WHITE8X8"
+local FACES = {
+	regular = MEDIA .. "Fonts\\Inter-Regular.ttf",
+	semibold = MEDIA .. "Fonts\\Inter-SemiBold.ttf",
+}
+local FONTS = {
+	title = { "AtlasDeChasseFontTitle", "semibold", 17 },
+	name = { "AtlasDeChasseFontName", "semibold", 13 },
+	body = { "AtlasDeChasseFontBody", "regular", 12 },
+	strong = { "AtlasDeChasseFontStrong", "semibold", 12 },
+	small = { "AtlasDeChasseFontSmall", "regular", 11 },
+	label = { "AtlasDeChasseFontLabel", "semibold", 11 },
+}
+
+-- Creates the font objects once; true when Inter loaded for all of them.
+local function CreateFonts()
+	if type(CreateFont) ~= "function" then return false end
+	local fallback = STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
+	local all = true
+	for _, spec in pairs(FONTS) do
+		local name, face, size = spec[1], spec[2], spec[3]
+		local font = _G[name] or CreateFont(name)
+		local ok, loaded = pcall(font.SetFont, font, FACES[face], size, "")
+		if not (ok and loaded ~= false and font:GetFont()) then
+			all = false
+			font:SetFont(fallback, size, "")
+		end
+	end
+	return all
+end
+
+-- At load: the theme menu can open from the minimap button before the window.
+ns.fontReady = CreateFonts()
+
+-- The font template of a role ("body", "label", ...).
+local function Font(role)
+	return FONTS[role][1]
+end
 
 local GROUPS = {
 	{ key = "now", title = "Can learn now", max = 5 },
@@ -61,8 +113,8 @@ local function PaintedTexture(parent, layer, token, alpha, sublevel)
 	return texture
 end
 
-local function PaintedText(parent, template, token)
-	local text = parent:CreateFontString(nil, "ARTWORK", template or "GameFontNormal")
+local function PaintedText(parent, role, token)
+	local text = parent:CreateFontString(nil, "ARTWORK", Font(role))
 	painters[#painters + 1] = { object = text, kind = "text", token = token }
 	return text
 end
@@ -77,6 +129,62 @@ local function SetTextColor(text, token)
 	text:SetTextColor(r, g, b)
 end
 
+-- A one-pixel line in the theme's hairline colour.
+local function Hairline(parent, alpha)
+	return PaintedTexture(parent, "BORDER", "line", alpha)
+end
+
+-- A pill filling `owner`: two half discs for the round ends and a band between.
+-- Its colour is set with SetPillColor, never with SetColorTexture.
+local function Pill(owner, layer, sublevel)
+	local height = owner:GetHeight()
+	local pill = {}
+	pill.left = owner:CreateTexture(nil, layer, nil, sublevel)
+	pill.left:SetTexture(DISC)
+	pill.left:SetTexCoord(0, 0.5, 0, 1)
+	pill.left:SetPoint("TOPLEFT")
+	pill.left:SetPoint("BOTTOMLEFT")
+	pill.left:SetWidth(height / 2)
+	pill.right = owner:CreateTexture(nil, layer, nil, sublevel)
+	pill.right:SetTexture(DISC)
+	pill.right:SetTexCoord(0.5, 1, 0, 1)
+	pill.right:SetPoint("TOPRIGHT")
+	pill.right:SetPoint("BOTTOMRIGHT")
+	pill.right:SetWidth(height / 2)
+	pill.middle = owner:CreateTexture(nil, layer, nil, sublevel)
+	pill.middle:SetTexture(WHITE)
+	pill.middle:SetPoint("TOPLEFT", pill.left, "TOPRIGHT")
+	pill.middle:SetPoint("BOTTOMRIGHT", pill.right, "BOTTOMLEFT")
+	return pill
+end
+
+local function SetPillColor(pill, token, alpha)
+	local r, g, b = ns.Token(token)
+	for _, part in ipairs({ pill.left, pill.middle, pill.right }) do
+		part:SetVertexColor(r, g, b, alpha or 1)
+	end
+end
+
+-- A rounded button: a pill behind a centred label. Paint sets its colours
+-- (accent fill for the primary button, the alternate panel for the other).
+local function PillButton(parent, width, label, primary)
+	local button = CreateFrame("Button", nil, parent)
+	button:SetSize(width, BUTTON_H)
+	button.pill = Pill(button, "BACKGROUND")
+	button.hover = Pill(button, "HIGHLIGHT")
+	button.label = button:CreateFontString(nil, "ARTWORK", Font(primary and "label" or "small"))
+	button.label:SetPoint("CENTER")
+	button.label:SetText(label)
+	button.primary = primary
+	return button
+end
+
+local function PaintPillButton(button)
+	SetPillColor(button.pill, button.primary and "accent" or "alt")
+	SetPillColor(button.hover, "text", 0.08)
+	SetTextColor(button.label, button.primary and "onAccent" or "dim")
+end
+
 local function AbilityName(ability)
 	if not ability then return "" end
 	return ability.localName or ability.en or "?"
@@ -88,73 +196,76 @@ end
 
 local function BuildSidebar()
 	local sidebar = CreateFrame("Frame", nil, frame)
-	sidebar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-	sidebar:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0)
-	sidebar:SetWidth(SIDEBAR_W)
+	sidebar:SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -1)
+	sidebar:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 1, 1)
+	sidebar:SetWidth(SIDEBAR_W - 1)
 	local background = PaintedTexture(sidebar, "BACKGROUND", "sidebar")
 	background:SetAllPoints()
+	local edge = Hairline(sidebar)
+	edge:SetPoint("TOPRIGHT")
+	edge:SetPoint("BOTTOMRIGHT")
+	edge:SetWidth(1)
 	frame.sidebar = sidebar
 
-	-- Pet card: portrait, name + level, then what the client knows.
+	-- Pet card: a round portrait in an accent ring, name + level, then what the
+	-- client knows.
 	local portraitFrame = CreateFrame("Frame", nil, sidebar)
-	portraitFrame:SetSize(44, 44)
-	portraitFrame:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 12, -12)
-	local ring = PaintedTexture(portraitFrame, "BACKGROUND", "accent")
+	portraitFrame:SetSize(42, 42)
+	portraitFrame:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 14, -13)
+	local ring = portraitFrame:CreateTexture(nil, "BACKGROUND")
+	ring:SetTexture(DISC)
 	ring:SetAllPoints()
+	painters[#painters + 1] = { object = ring, kind = "vertex", token = "accent" }
 	petPortrait = portraitFrame:CreateTexture(nil, "ARTWORK")
 	petPortrait:SetPoint("TOPLEFT", 2, -2)
 	petPortrait:SetPoint("BOTTOMRIGHT", -2, 2)
-	petPortrait:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-	-- A round mask when the client has one; a square portrait otherwise.
-	if petPortrait.AddMaskTexture and portraitFrame.CreateTexture then
-		local mask = portraitFrame:CreateTexture(nil, "BACKGROUND", nil, 1)
-		mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
+	-- Masks must come from CreateMaskTexture; without one the portrait stays square.
+	if portraitFrame.CreateMaskTexture and petPortrait.AddMaskTexture then
+		local mask = portraitFrame:CreateMaskTexture()
+		mask:SetTexture(DISC, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
 		mask:SetAllPoints(petPortrait)
 		pcall(petPortrait.AddMaskTexture, petPortrait, mask)
 	end
 
-	petName = PaintedText(sidebar, "GameFontNormal", "text")
+	petName = PaintedText(sidebar, "name", "text")
 	petName:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 66, -18)
 	petName:SetWidth(150)
 	petName:SetJustifyH("LEFT")
-	petStats = PaintedText(sidebar, "GameFontHighlightSmall", "dim")
-	petStats:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 66, -36)
-	petStats:SetWidth(152)
+	petStats = PaintedText(sidebar, "small", "dim")
+	petStats:SetPoint("TOPLEFT", petName, "BOTTOMLEFT", 0, -4)
+	petStats:SetWidth(150)
 	petStats:SetJustifyH("LEFT")
 	petStats:SetWordWrap(true)
 
+	local cardLine = Hairline(sidebar)
+	cardLine:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 0, -CARD_H)
+	cardLine:SetPoint("TOPRIGHT", sidebar, "TOPRIGHT", -1, -CARD_H)
+	cardLine:SetHeight(1)
+
 	-- Only when the hunter has no pet out: pick a family to browse.
-	familyButton = CreateFrame("Button", nil, sidebar)
-	familyButton:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 12, -58)
-	familyButton:SetSize(206, 18)
-	familyButton.label = PaintedText(familyButton, "GameFontNormalSmall", "spell")
-	familyButton.label:SetPoint("LEFT", 0, 0)
-	familyButton.label:SetJustifyH("LEFT")
-	familyButton.highlight = familyButton:CreateTexture(nil, "HIGHLIGHT")
-	familyButton.highlight:SetAllPoints()
+	familyButton = PillButton(sidebar, SIDEBAR_W - 28, "", false)
+	familyButton:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 14, -(CARD_H + 10))
 	familyButton:SetScript("OnClick", function()
 		if UI.ToggleFamilyMenu then UI.ToggleFamilyMenu() end
 	end)
 
-	emptyPetText = PaintedText(sidebar, "GameFontHighlightSmall", "muted")
-	emptyPetText:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 12, -80)
-	emptyPetText:SetWidth(206)
+	emptyPetText = PaintedText(sidebar, "small", "muted")
+	emptyPetText:SetPoint("TOPLEFT", familyButton, "BOTTOMLEFT", 0, -8)
+	emptyPetText:SetWidth(SIDEBAR_W - 28)
 	emptyPetText:SetJustifyH("LEFT")
 	emptyPetText:SetWordWrap(true)
 	emptyPetText:SetText(L["No pet out — bring out your pet to see what it can learn."])
 
-	local y = -114
+	-- Rank groups; UI.LayoutSidebar stacks them from what each one shows.
 	for _, definition in ipairs(GROUPS) do
 		local group = { key = definition.key, rows = {} }
-		group.header = PaintedText(sidebar, "GameFontNormalSmall", "muted")
-		group.header:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 12, y)
+		group.header = PaintedText(sidebar, "label", "muted")
 		group.header:SetText(L[definition.title])
-		y = y - 20
 		for index = 1, definition.max do
 			local row = CreateFrame("Button", nil, sidebar)
 			row:SetHeight(ROW_H)
-			row:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 0, y)
-			row:SetPoint("TOPRIGHT", sidebar, "TOPRIGHT", 0, y)
+			local hover = PaintedTexture(row, "HIGHLIGHT", "text", 0.05)
+			hover:SetAllPoints()
 			row.selected = row:CreateTexture(nil, "BACKGROUND")
 			row.selected:SetAllPoints()
 			row.selected:Hide()
@@ -164,31 +275,58 @@ local function BuildSidebar()
 			row.bar:SetWidth(3)
 			row.bar:Hide()
 			row.icon = row:CreateTexture(nil, "ARTWORK")
-			row.icon:SetPoint("LEFT", 12, 0)
-			row.icon:SetSize(14, 14)
+			row.icon:SetPoint("LEFT", 14, 0)
+			row.icon:SetSize(15, 15)
 			row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-			row.text = row:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-			row.text:SetPoint("LEFT", 32, 0)
-			row.text:SetWidth(120)
+			row.text = row:CreateFontString(nil, "ARTWORK", Font("body"))
+			row.text:SetPoint("LEFT", 36, 0)
+			row.text:SetWidth(118)
 			row.text:SetJustifyH("LEFT")
-			row.suffix = row:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-			row.suffix:SetPoint("RIGHT", -12, 0)
+			row.text:SetWordWrap(false)
+			row.suffix = row:CreateFontString(nil, "ARTWORK", Font("small"))
+			row.suffix:SetPoint("RIGHT", -14, 0)
 			row.suffix:SetJustifyH("RIGHT")
 			row:SetScript("OnClick", function(self)
 				if self.entry and ns.SelectPlanEntry then ns.SelectPlanEntry(self.entry) end
 			end)
 			group.rows[index] = row
-			y = y - ROW_H
 		end
-		y = y - 10
 		abilityGroups[#abilityGroups + 1] = group
+	end
+end
+
+-- Stacks the rank groups under the pet card: a group without rows takes no room.
+local function LayoutSidebar(browsing)
+	local sidebar = frame.sidebar
+	local y = -(CARD_H + 12)
+	if browsing then y = -(CARD_H + 10 + BUTTON_H + 8 + 40) end
+	for _, group in ipairs(abilityGroups) do
+		local shown = 0
+		for _, row in ipairs(group.rows) do
+			if row.entry then shown = shown + 1 end
+		end
+		group.header:SetShown(shown > 0)
+		if shown > 0 then
+			group.header:ClearAllPoints()
+			group.header:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 14, y - 5)
+			y = y - GROUP_HEAD_H
+			for _, row in ipairs(group.rows) do
+				if row.entry then
+					row:ClearAllPoints()
+					row:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 0, y)
+					row:SetPoint("TOPRIGHT", sidebar, "TOPRIGHT", -1, y)
+					y = y - ROW_H
+				end
+			end
+			y = y - GROUP_GAP
+		end
 	end
 end
 
 local function BuildMain()
 	local main = CreateFrame("Frame", nil, frame)
-	main:SetPoint("TOPLEFT", frame, "TOPLEFT", SIDEBAR_W, 0)
-	main:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
+	main:SetPoint("TOPLEFT", frame, "TOPLEFT", SIDEBAR_W, -1)
+	main:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -1, 1)
 	frame.main = main
 
 	-- Header band: sky fading into the window background.
@@ -198,30 +336,41 @@ local function BuildMain()
 	header:SetHeight(HEADER_H)
 	headerGradient = header:CreateTexture(nil, "BACKGROUND")
 	headerGradient:SetAllPoints()
+	headerGradient:SetColorTexture(1, 1, 1, 1) -- white base, tinted by SetGradient in Paint
 	frame.header = header
 
-	titleName = PaintedText(header, "GameFontNormalLarge", "text")
-	titleName:SetPoint("TOPLEFT", header, "TOPLEFT", 14, -8)
+	titleName = PaintedText(header, "title", "text")
+	titleName:SetPoint("TOPLEFT", header, "TOPLEFT", 16, -12)
 	titleName:SetJustifyH("LEFT")
-	titleRank = PaintedText(header, "GameFontNormalLarge", "accent")
-	titleRank:SetPoint("LEFT", titleName, "RIGHT", 6, 0)
+	titleRank = PaintedText(header, "title", "accent")
+	titleRank:SetPoint("LEFT", titleName, "RIGHT", 7, 0)
 	titleRank:SetJustifyH("LEFT")
-	subtitle = PaintedText(header, "GameFontHighlightSmall", "dim")
-	subtitle:SetPoint("TOPLEFT", header, "TOPLEFT", 14, -28)
+	subtitle = PaintedText(header, "small", "dim")
+	subtitle:SetPoint("TOPLEFT", titleName, "BOTTOMLEFT", 0, -6)
 	subtitle:SetJustifyH("LEFT")
-	subtitle:SetWidth(430)
-	learnedBadge = PaintedText(header, "GameFontNormalSmall", "ok")
-	learnedBadge:SetPoint("TOPLEFT", header, "TOPLEFT", 14, -44)
-	learnedBadge:SetWidth(430)
+	subtitle:SetWidth(480)
+	subtitle:SetWordWrap(true)
+	learnedBadge = PaintedText(header, "label", "ok")
+	learnedBadge:SetPoint("TOPLEFT", subtitle, "BOTTOMLEFT", 0, -3)
+	learnedBadge:SetWidth(480)
 	learnedBadge:SetJustifyH("LEFT")
 	learnedBadge:Hide()
 
-	gearButton = CreateFrame("Button", nil, header)
-	gearButton:SetSize(18, 18)
-	gearButton:SetPoint("TOPRIGHT", header, "TOPRIGHT", -34, -12)
-	local gearIcon = gearButton:CreateTexture(nil, "ARTWORK")
-	gearIcon:SetTexture("Interface\\Buttons\\UI-OptionsButton")
-	gearIcon:SetAllPoints()
+	-- Gear and close: flat glyphs in the theme's colours, brighter on hover.
+	local function HeaderIcon(offsetX)
+		local button = CreateFrame("Button", nil, header)
+		button:SetSize(22, 22)
+		button:SetPoint("TOPRIGHT", header, "TOPRIGHT", offsetX, -10)
+		button.hover = Pill(button, "HIGHLIGHT")
+		return button
+	end
+	gearButton = HeaderIcon(-38)
+	gearButton.icon = gearButton:CreateTexture(nil, "ARTWORK")
+	gearButton.icon:SetTexture("Interface\\Buttons\\UI-OptionsButton")
+	gearButton.icon:SetPoint("CENTER")
+	gearButton.icon:SetSize(14, 14)
+	if gearButton.icon.SetDesaturated then gearButton.icon:SetDesaturated(true) end
+	painters[#painters + 1] = { object = gearButton.icon, kind = "vertex", token = "dim" }
 	gearButton:SetScript("OnClick", function() UI.ToggleThemeMenu() end)
 	gearButton:SetScript("OnEnter", function(self)
 		if not GameTooltip then return end
@@ -233,59 +382,71 @@ local function BuildMain()
 		if GameTooltip then GameTooltip:Hide() end
 	end)
 
-	closeButton = CreateFrame("Button", nil, header)
-	closeButton:SetSize(18, 18)
-	closeButton:SetPoint("TOPRIGHT", header, "TOPRIGHT", -12, -12)
-	local closeIcon = closeButton:CreateTexture(nil, "ARTWORK")
-	closeIcon:SetTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Up")
-	closeIcon:SetAllPoints()
+	closeButton = HeaderIcon(-12)
+	closeButton.label = PaintedText(closeButton, "name", "dim")
+	closeButton.label:SetPoint("CENTER", 0, 1)
+	closeButton.label:SetText("×")
 	closeButton:SetScript("OnClick", function() ns.Close() end)
 
-	-- Filter chips.
+	-- Filter chips: pills sized to their label.
 	local chipRow = CreateFrame("Frame", nil, main)
 	chipRow:SetPoint("TOPLEFT", main, "TOPLEFT", 0, -HEADER_H)
 	chipRow:SetPoint("TOPRIGHT", main, "TOPRIGHT", 0, -HEADER_H)
 	chipRow:SetHeight(CHIPS_H)
 	frame.chipRow = chipRow
 	local showFaction = ns.Planner.HasZoneFactions()
-	local x = 14
+	local x = 16
 	for _, definition in ipairs(CHIPS) do
 		-- Without any zone faction in the data the filter could not change anything.
 		if definition.key ~= "faction" or showFaction then
 			local chip = CreateFrame("Button", nil, chipRow)
-			chip:SetSize(definition.width, 18)
-			chip:SetPoint("LEFT", chipRow, "LEFT", x, 0)
+			chip:SetHeight(CHIP_H)
 			chip.key = definition.key
-			chip.background = chip:CreateTexture(nil, "BACKGROUND")
-			chip.background:SetAllPoints()
-			chip.label = chip:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+			chip.pill = Pill(chip, "BACKGROUND")
+			chip.hover = Pill(chip, "HIGHLIGHT")
+			chip.label = chip:CreateFontString(nil, "ARTWORK", Font("label"))
 			chip.label:SetPoint("CENTER", 0, 0)
 			chip.label:SetText(L[definition.label])
+			local width = math.max(definition.width, math.floor((chip.label:GetStringWidth() or 0) + 26))
+			chip:SetWidth(width)
+			chip:SetPoint("LEFT", chipRow, "LEFT", x, 0)
 			chip:SetScript("OnClick", function(self)
 				if ns.ToggleFilter then ns.ToggleFilter(self.key) end
 			end)
 			chips[#chips + 1] = chip
-			x = x + definition.width + 6
+			x = x + width + 6
 		end
 	end
+	local chipLine = Hairline(main)
+	chipLine:SetPoint("TOPLEFT", main, "TOPLEFT", 0, -(HEADER_H + CHIPS_H))
+	chipLine:SetPoint("TOPRIGHT", main, "TOPRIGHT", 0, -(HEADER_H + CHIPS_H))
+	chipLine:SetHeight(1)
 
-	-- Beast table.
-	local tableTop = HEADER_H + CHIPS_H
-	headName = PaintedText(main, "GameFontNormalSmall", "muted")
-	headName:SetPoint("TOPLEFT", main, "TOPLEFT", 12, -(tableTop + 8))
+	-- Beast table: a header row on the panel colour, then the rows.
+	local tableTop = HEADER_H + CHIPS_H + 1
+	local tableHead = PaintedTexture(main, "BACKGROUND", "panel", nil, 1)
+	tableHead:SetPoint("TOPLEFT", main, "TOPLEFT", 0, -tableTop)
+	tableHead:SetPoint("TOPRIGHT", main, "TOPLEFT", TABLE_W, -tableTop)
+	tableHead:SetHeight(TABLE_HEAD_H)
+	local headLine = Hairline(main)
+	headLine:SetPoint("TOPLEFT", tableHead, "BOTTOMLEFT")
+	headLine:SetPoint("TOPRIGHT", tableHead, "BOTTOMRIGHT")
+	headLine:SetHeight(1)
+	headName = PaintedText(main, "label", "muted")
+	headName:SetPoint("LEFT", tableHead, "LEFT", 16, 0)
 	headName:SetText(L["Beast"])
-	headLevel = PaintedText(main, "GameFontNormalSmall", "muted")
-	headLevel:SetPoint("TOPLEFT", main, "TOPLEFT", 196, -(tableTop + 8))
-	headLevel:SetWidth(50)
+	headLevel = PaintedText(main, "label", "muted")
+	headLevel:SetPoint("LEFT", tableHead, "LEFT", 166, 0)
+	headLevel:SetWidth(40)
 	headLevel:SetJustifyH("RIGHT")
 	headLevel:SetText(L["Level"])
-	headZone = PaintedText(main, "GameFontNormalSmall", "muted")
-	headZone:SetPoint("TOPLEFT", main, "TOPLEFT", 252, -(tableTop + 8))
+	headZone = PaintedText(main, "label", "muted")
+	headZone:SetPoint("LEFT", tableHead, "LEFT", 218, 0)
 	headZone:SetText(L["Zone"])
 
 	scroll = CreateFrame("ScrollFrame", nil, main)
-	scroll:SetPoint("TOPLEFT", main, "TOPLEFT", 0, -(tableTop + 24))
-	scroll:SetPoint("BOTTOMRIGHT", main, "BOTTOMRIGHT", -(DETAIL_W + 12), 12)
+	scroll:SetPoint("TOPLEFT", main, "TOPLEFT", 0, -(tableTop + TABLE_HEAD_H + 1))
+	scroll:SetPoint("BOTTOMRIGHT", main, "BOTTOMLEFT", TABLE_W, 0)
 	scrollChild = CreateFrame("Frame", nil, scroll)
 	scrollChild:SetSize(TABLE_W, BEAST_ROW_H)
 	scroll:SetScrollChild(scrollChild)
@@ -304,21 +465,29 @@ local function BuildMain()
 		row:SetHeight(BEAST_ROW_H)
 		row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -((index - 1) * BEAST_ROW_H))
 		row:SetWidth(TABLE_W)
+		local hover = PaintedTexture(row, "HIGHLIGHT", "text", 0.05)
+		hover:SetAllPoints()
 		row.selected = row:CreateTexture(nil, "BACKGROUND")
 		row.selected:SetAllPoints()
 		row.selected:Hide()
-		row.name = row:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-		row.name:SetPoint("TOPLEFT", 10, -4)
-		row.name:SetWidth(180)
+		local rule = Hairline(row, 0.45)
+		rule:SetPoint("BOTTOMLEFT", 0, 0)
+		rule:SetPoint("BOTTOMRIGHT", 0, 0)
+		rule:SetHeight(1)
+		row.name = row:CreateFontString(nil, "ARTWORK", Font("strong"))
+		row.name:SetPoint("LEFT", 16, 0)
+		row.name:SetWidth(148)
 		row.name:SetJustifyH("LEFT")
-		row.level = row:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-		row.level:SetPoint("TOPLEFT", 196, -4)
-		row.level:SetWidth(50)
+		row.name:SetWordWrap(false)
+		row.level = row:CreateFontString(nil, "ARTWORK", Font("body"))
+		row.level:SetPoint("LEFT", 166, 0)
+		row.level:SetWidth(40)
 		row.level:SetJustifyH("RIGHT")
-		row.zone = row:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-		row.zone:SetPoint("TOPLEFT", 252, -4)
-		row.zone:SetWidth(92)
+		row.zone = row:CreateFontString(nil, "ARTWORK", Font("body"))
+		row.zone:SetPoint("LEFT", 218, 0)
+		row.zone:SetWidth(TABLE_W - 218 - 10)
 		row.zone:SetJustifyH("LEFT")
+		row.zone:SetWordWrap(false)
 		row:SetScript("OnClick", function(self)
 			if self.entry and ns.SelectBeast then ns.SelectBeast(self.entry.id) end
 		end)
@@ -326,49 +495,39 @@ local function BuildMain()
 		beastRows[index] = row
 	end
 
-	tableEmpty = PaintedText(scrollChild, "GameFontHighlightSmall", "muted")
-	tableEmpty:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 10, -8)
-	tableEmpty:SetWidth(TABLE_W - 20)
+	tableEmpty = PaintedText(scrollChild, "small", "muted")
+	tableEmpty:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 16, -10)
+	tableEmpty:SetWidth(TABLE_W - 32)
 	tableEmpty:SetJustifyH("LEFT")
 	tableEmpty:SetWordWrap(true)
 	tableEmpty:Hide()
 
 	-- Detail panel: selected beast, its map and the waypoint buttons.
-	local detail = CreateFrame("Frame", nil, main)
-	detail:SetPoint("TOPRIGHT", main, "TOPRIGHT", -12, -(tableTop + 8))
-	detail:SetPoint("BOTTOMRIGHT", main, "BOTTOMRIGHT", -12, 12)
-	detail:SetWidth(DETAIL_W)
-	frame.detail = detail
-	local separator = PaintedTexture(detail, "BACKGROUND", "line")
-	separator:SetPoint("TOPLEFT", detail, "TOPLEFT", -12, 0)
-	separator:SetPoint("BOTTOMLEFT", detail, "BOTTOMLEFT", -12, 0)
+	local detailPanel = PaintedTexture(main, "BACKGROUND", "panel", nil, 1)
+	detailPanel:SetPoint("TOPLEFT", main, "TOPLEFT", TABLE_W, -tableTop)
+	detailPanel:SetPoint("BOTTOMRIGHT", main, "BOTTOMRIGHT", 0, 0)
+	local separator = Hairline(main)
+	separator:SetPoint("TOPLEFT", detailPanel, "TOPLEFT")
+	separator:SetPoint("BOTTOMLEFT", detailPanel, "BOTTOMLEFT")
 	separator:SetWidth(1)
 
-	detailName = PaintedText(detail, "GameFontNormal", "npc")
-	detailName:SetPoint("TOPLEFT", detail, "TOPLEFT", 0, 0)
-	detailName:SetWidth(DETAIL_W)
-	detailName:SetJustifyH("LEFT")
-	detailZone = PaintedText(detail, "GameFontHighlightSmall", "place")
-	detailZone:SetPoint("TOPLEFT", detail, "TOPLEFT", 0, -18)
-	detailZone:SetWidth(DETAIL_W)
-	detailZone:SetJustifyH("LEFT")
-	detailZone:SetWordWrap(true)
-	detailHint = PaintedText(detail, "GameFontHighlightSmall", "muted")
-	detailHint:SetPoint("TOPLEFT", detail, "TOPLEFT", 0, -46)
-	detailHint:SetWidth(DETAIL_W)
-	detailHint:SetJustifyH("LEFT")
-	detailHint:SetWordWrap(true)
-	detailHint:SetText(L["Other beasts are sorted by level."])
+	local detail = CreateFrame("Frame", nil, main)
+	detail:SetPoint("TOPLEFT", detailPanel, "TOPLEFT", 12, -12)
+	detail:SetPoint("BOTTOMRIGHT", main, "BOTTOMRIGHT", -12, 12)
+	frame.detail = detail
 
 	mapFrame = CreateFrame("Frame", nil, detail)
 	mapFrame:SetSize(MAP_W, MAP_H)
-	mapFrame:SetPoint("TOPLEFT", detail, "TOPLEFT", 0, -70)
+	mapFrame:SetPoint("TOPLEFT", detail, "TOPLEFT", 0, 0)
 	local mapBackground = PaintedTexture(mapFrame, "BACKGROUND", "alt")
 	mapBackground:SetAllPoints()
 	mapArt = mapFrame:CreateTexture(nil, "BORDER")
 	mapArt:SetAllPoints()
 	mapArt:Hide()
-	mapHint = PaintedText(mapFrame, "GameFontHighlightSmall", "muted")
+	local mapEdge = PaintedTexture(mapFrame, "BACKGROUND", "line", nil, -1)
+	mapEdge:SetPoint("TOPLEFT", -1, 1)
+	mapEdge:SetPoint("BOTTOMRIGHT", 1, -1)
+	mapHint = PaintedText(mapFrame, "small", "muted")
 	mapHint:SetPoint("TOPLEFT", mapFrame, "TOPLEFT", 8, -8)
 	mapHint:SetWidth(MAP_W - 16)
 	mapHint:SetJustifyH("LEFT")
@@ -376,37 +535,41 @@ local function BuildMain()
 
 	pinParts = {}
 	local ring = mapFrame:CreateTexture(nil, "OVERLAY", nil, 2)
-	ring:SetTexture("Interface\\Buttons\\WHITE8X8")
-	ring:SetSize(11, 11)
+	ring:SetTexture(DISC)
+	ring:SetSize(14, 14)
 	local hole = mapFrame:CreateTexture(nil, "OVERLAY", nil, 3)
-	hole:SetTexture("Interface\\Buttons\\WHITE8X8")
-	hole:SetSize(7, 7)
+	hole:SetTexture(DISC)
+	hole:SetSize(9, 9)
 	local dot = mapFrame:CreateTexture(nil, "OVERLAY", nil, 4)
-	dot:SetTexture("Interface\\Buttons\\WHITE8X8")
-	dot:SetSize(3, 3)
+	dot:SetTexture(DISC)
+	dot:SetSize(5, 5)
 	pinParts.ring, pinParts.hole, pinParts.dot = ring, hole, dot
 	ring:Hide()
 	hole:Hide()
 	dot:Hide()
 
-	waypointButton = CreateFrame("Button", nil, detail)
-	waypointButton:SetSize(DETAIL_W, 22)
-	waypointButton:SetPoint("BOTTOMLEFT", detail, "BOTTOMLEFT", 0, 26)
-	waypointButton.background = waypointButton:CreateTexture(nil, "BACKGROUND")
-	waypointButton.background:SetAllPoints()
-	waypointButton.label = waypointButton:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-	waypointButton.label:SetPoint("CENTER")
-	waypointButton.label:SetText(L["Arrow + pin"])
+	detailName = PaintedText(detail, "name", "npc")
+	detailName:SetPoint("TOPLEFT", mapFrame, "BOTTOMLEFT", 0, -12)
+	detailName:SetWidth(MAP_W)
+	detailName:SetJustifyH("LEFT")
+	detailZone = PaintedText(detail, "small", "place")
+	detailZone:SetPoint("TOPLEFT", detailName, "BOTTOMLEFT", 0, -4)
+	detailZone:SetWidth(MAP_W)
+	detailZone:SetJustifyH("LEFT")
+	detailZone:SetWordWrap(true)
+	detailHint = PaintedText(detail, "small", "muted")
+	detailHint:SetPoint("TOPLEFT", detailZone, "BOTTOMLEFT", 0, -8)
+	detailHint:SetWidth(MAP_W)
+	detailHint:SetJustifyH("LEFT")
+	detailHint:SetWordWrap(true)
+	detailHint:SetText(L["Other beasts are sorted by level."])
+
+	waypointButton = PillButton(detail, MAP_W, L["Arrow + pin"], true)
+	waypointButton:SetPoint("BOTTOMLEFT", detail, "BOTTOMLEFT", 0, BUTTON_H + 8)
 	waypointButton:SetScript("OnClick", function() UI.PlaceWaypoint(ns.state and ns.state.beast) end)
 
-	mapButton = CreateFrame("Button", nil, detail)
-	mapButton:SetSize(DETAIL_W, 20)
-	mapButton:SetPoint("BOTTOMLEFT", detail, "BOTTOMLEFT", 0, 2)
-	mapButton.background = mapButton:CreateTexture(nil, "BACKGROUND")
-	mapButton.background:SetAllPoints()
-	mapButton.label = mapButton:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-	mapButton.label:SetPoint("CENTER")
-	mapButton.label:SetText(L["Map"])
+	mapButton = PillButton(detail, MAP_W, L["Map"], false)
+	mapButton:SetPoint("BOTTOMLEFT", detail, "BOTTOMLEFT", 0, 0)
 	mapButton:SetScript("OnClick", function() UI.OpenMap(ns.state and ns.state.beast) end)
 end
 
@@ -427,9 +590,11 @@ function UI.Build()
 	frame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
 	frame:SetScript("OnHide", function() UI.CloseThemeMenu() end)
 
-	local border = PaintedTexture(frame, "BACKGROUND", "accent", 0.35)
+	-- Explicit sublevels: on the same sublevel the game may draw the translucent
+	-- border over the background, which tinted the whole window.
+	local border = PaintedTexture(frame, "BACKGROUND", "line", nil, -8)
 	border:SetAllPoints()
-	local background = PaintedTexture(frame, "BACKGROUND", "bg")
+	local background = PaintedTexture(frame, "BACKGROUND", "bg", nil, -7)
 	background:SetPoint("TOPLEFT", 1, -1)
 	background:SetPoint("BOTTOMRIGHT", -1, 1)
 	frame.background = background
@@ -455,30 +620,42 @@ end
 -----------------------------------------------------------------------------
 
 function UI.Paint()
-	if not frame then return end
 	for _, painter in ipairs(painters) do
 		if painter.kind == "text" then
 			SetTextColor(painter.object, painter.token)
+		elseif painter.kind == "vertex" then
+			-- A shaped texture (disc, icon): tint it, keep its shape.
+			local r, g, b = ns.Token(painter.token)
+			painter.object:SetVertexColor(r, g, b, painter.alpha or 1)
 		else
 			SetTextureColor(painter.object, painter.token, painter.alpha)
 		end
 	end
+	-- The current theme stands out in the theme menu.
+	for _, row in ipairs(themeRowList or {}) do
+		SetTextColor(row.text, row.key == ns.theme and "accent" or "dim")
+	end
+	-- The menus can be open without the window (minimap button).
+	if not frame then return end
 
+	-- SetGradientAlpha is gone from this client. VERTICAL takes the bottom colour first,
+	-- so the sky sits at the top and fades into the background below.
 	local skyR, skyG, skyB = ns.Token("sky")
 	local bgR, bgG, bgB = ns.Token("bg")
-	headerGradient:SetGradientAlpha("VERTICAL", skyR, skyG, skyB, 1, bgR, bgG, bgB, 1)
+	headerGradient:SetGradient("VERTICAL", CreateColor(bgR, bgG, bgB, 1), CreateColor(skyR, skyG, skyB, 1))
 
 	-- Filter chips: pressed ones are filled with the accent colour.
 	for _, chip in ipairs(chips) do
 		local pressed = ns.state and ns.state.filters and ns.state.filters[chip.key]
-		if pressed then
-			SetTextureColor(chip.background, "accent")
-			SetTextColor(chip.label, "onAccent")
-		else
-			SetTextureColor(chip.background, "alt")
-			SetTextColor(chip.label, "dim")
-		end
+		SetPillColor(chip.pill, pressed and "accent" or "alt")
+		SetPillColor(chip.hover, "text", 0.08)
+		SetTextColor(chip.label, pressed and "onAccent" or "dim")
 	end
+	for _, button in ipairs({ waypointButton, mapButton, familyButton }) do
+		PaintPillButton(button)
+	end
+	SetPillColor(gearButton.hover, "text", 0.08)
+	SetPillColor(closeButton.hover, "text", 0.08)
 
 	-- Rank rows: the selected one carries the accent bar of the mock.
 	local selection = ns.state and ns.state.selection
@@ -525,19 +702,9 @@ function UI.Paint()
 	-- Pin drawn over the map art.
 	local ring = pinParts and pinParts.ring
 	if ring then
-		SetTextureColor(pinParts.ring, "accent")
-		SetTextureColor(pinParts.hole, "bg")
-		SetTextureColor(pinParts.dot, "accent")
-	end
-
-	if themeMenu then
-		for _, row in ipairs(themeRowList or {}) do
-			local current = row.key == ns.theme
-			if current then
-				SetTextColor(row.text, "accent")
-			else
-				SetTextColor(row.text, "dim")
-			end
+		for part, token in pairs({ ring = "accent", hole = "bg", dot = "accent" }) do
+			local r, g, b = ns.Token(token)
+			pinParts[part]:SetVertexColor(r, g, b, 1)
 		end
 	end
 end
@@ -621,7 +788,10 @@ local function SuffixOf(entry, learned)
 	local rankRecord = ns.Planner.RankAt(entry.ability, entry.rank)
 	if not rankRecord then return "" end
 	if entry.known and entry.known > 0 then
-		return L["%d → %d"]:format(entry.known, entry.rank)
+		local text = L["%d → %d"]:format(entry.known, entry.rank)
+		-- The game font has no "→": without Inter, use a glyph it draws.
+		if not ns.fontReady then text = text:gsub("→", "»") end
+		return text
 	end
 	if rankRecord.petLevel then
 		return L["%d · level %d"]:format(entry.rank, rankRecord.petLevel)
@@ -641,7 +811,7 @@ function UI.Render()
 	familyButton:SetShown(state.browsing and true or false)
 	emptyPetText:SetShown(state.browsing and true or false)
 	if state.browsing then
-		familyButton.label:SetText(L["Family"] .. " : " .. ns.Pet.DisplayName(state.familyId) .. " ▾")
+		familyButton.label:SetText(L["Family"] .. " : " .. ns.Pet.DisplayName(state.familyId))
 	else
 		familyButton.label:SetText("")
 	end
@@ -671,6 +841,7 @@ function UI.Render()
 			end
 		end
 	end
+	LayoutSidebar(state.browsing)
 
 	-- Title: the chosen rank.
 	local ability = state.selection and state.selection.ability
@@ -804,16 +975,13 @@ local function BuildThemeMenu()
 	themeMenu = CreateFrame("Frame", "AtlasDeChasseThemeMenu", UIParent)
 	themeMenu:SetFrameStrata("FULLSCREEN_DIALOG")
 	themeMenu:SetSize(180, 18 + #ns.themeList * 20 + 8)
-	local border = themeMenu:CreateTexture(nil, "BACKGROUND")
+	local border = PaintedTexture(themeMenu, "BACKGROUND", "line", nil, -8)
 	border:SetAllPoints()
-	SetTextureColor(border, "line")
-	local background = themeMenu:CreateTexture(nil, "BACKGROUND", nil, 1)
+	local background = PaintedTexture(themeMenu, "BACKGROUND", "panel", nil, -7)
 	background:SetPoint("TOPLEFT", 1, -1)
 	background:SetPoint("BOTTOMRIGHT", -1, 1)
-	painters[#painters + 1] = { object = background, kind = "tex", token = "panel" }
-	painters[#painters + 1] = { object = border, kind = "tex", token = "line" }
 
-	local title = themeMenu:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+	local title = PaintedText(themeMenu, "label", "muted")
 	title:SetPoint("TOPLEFT", 10, -8)
 	title:SetText(L["Themes"])
 	themeRowList = {}
@@ -823,10 +991,9 @@ local function BuildThemeMenu()
 		row:SetPoint("TOPRIGHT", -4, -(8 + index * 20))
 		row:SetHeight(18)
 		row.key = theme.key
-		row.background = row:CreateTexture(nil, "HIGHLIGHT")
-		row.background:SetAllPoints()
-		SetTextureColor(row.background, "alt")
-		row.text = row:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+		local hover = PaintedTexture(row, "HIGHLIGHT", "alt")
+		hover:SetAllPoints()
+		row.text = row:CreateFontString(nil, "ARTWORK", Font("body"))
 		row.text:SetPoint("LEFT", 8, 0)
 		row.text:SetText(theme.name)
 		row:SetScript("OnClick", function()
@@ -866,29 +1033,29 @@ end
 local function BuildFamilyMenu()
 	familyMenu = CreateFrame("Frame", "AtlasDeChasseFamilyMenu", UIParent)
 	familyMenu:SetFrameStrata("FULLSCREEN_DIALOG")
-	local border = familyMenu:CreateTexture(nil, "BACKGROUND")
+	local border = PaintedTexture(familyMenu, "BACKGROUND", "line", nil, -8)
 	border:SetAllPoints()
-	SetTextureColor(border, "line")
 	familyMenu.border = border
-	local background = familyMenu:CreateTexture(nil, "BACKGROUND", nil, 1)
+	local background = PaintedTexture(familyMenu, "BACKGROUND", "panel", nil, -7)
 	background:SetPoint("TOPLEFT", 1, -1)
 	background:SetPoint("BOTTOMRIGHT", -1, 1)
-	SetTextureColor(background, "panel")
 	familyMenu.background = background
 	familyMenuRows = {}
 	local order = ns.FamilyOrder()
 	local columns = #order > 14 and 2 or 1
 	local rows = math.ceil(#order / columns)
-	familyMenu:SetSize(columns * 110 + 8, rows * 16 + 8)
+	familyMenu:SetSize(columns * 110 + 8, rows * 18 + 8)
 	for index, familyId in ipairs(order) do
 		local column = math.floor((index - 1) / rows)
 		local line = (index - 1) % rows
 		local row = CreateFrame("Button", nil, familyMenu)
-		row:SetPoint("TOPLEFT", 4 + column * 110, -(4 + line * 16))
-		row:SetSize(106, 16)
+		row:SetPoint("TOPLEFT", 4 + column * 110, -(4 + line * 18))
+		row:SetSize(106, 18)
 		row.familyId = familyId
-		row.text = row:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-		row.text:SetPoint("LEFT", 4, 0)
+		local hover = PaintedTexture(row, "HIGHLIGHT", "alt")
+		hover:SetAllPoints()
+		row.text = PaintedText(row, "body", "dim")
+		row.text:SetPoint("LEFT", 6, 0)
 		row.text:SetText(ns.Pet.DisplayName(familyId))
 		row:SetScript("OnClick", function()
 			familyMenu:Hide()
@@ -908,4 +1075,5 @@ function UI.ToggleFamilyMenu()
 	familyMenu:ClearAllPoints()
 	familyMenu:SetPoint("TOPLEFT", familyButton, "BOTTOMLEFT", 0, -4)
 	familyMenu:Show()
+	UI.Paint()
 end
