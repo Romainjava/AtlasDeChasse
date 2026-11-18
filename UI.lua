@@ -99,7 +99,7 @@ local gearButton, closeButton
 local headName, headLevel, headZone
 local scroll, scrollChild, scrollOffset, tableEmpty
 local detailName, detailZone, detailHint
-local mapFrame, mapArt, mapHint, pinParts
+local mapFrame, mapHint, pinParts
 local waypointButton, mapButton
 local themeMenu, themeRowList
 
@@ -278,14 +278,15 @@ local function BuildSidebar()
 			row.icon:SetPoint("LEFT", 14, 0)
 			row.icon:SetSize(15, 15)
 			row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-			row.text = row:CreateFontString(nil, "ARTWORK", Font("body"))
-			row.text:SetPoint("LEFT", 36, 0)
-			row.text:SetWidth(118)
-			row.text:SetJustifyH("LEFT")
-			row.text:SetWordWrap(false)
 			row.suffix = row:CreateFontString(nil, "ARTWORK", Font("small"))
 			row.suffix:SetPoint("RIGHT", -14, 0)
 			row.suffix:SetJustifyH("RIGHT")
+			-- The name takes all the room the suffix leaves.
+			row.text = row:CreateFontString(nil, "ARTWORK", Font("body"))
+			row.text:SetPoint("LEFT", 36, 0)
+			row.text:SetPoint("RIGHT", row.suffix, "LEFT", -8, 0)
+			row.text:SetJustifyH("LEFT")
+			row.text:SetWordWrap(false)
 			row:SetScript("OnClick", function(self)
 				if self.entry and ns.SelectPlanEntry then ns.SelectPlanEntry(self.entry) end
 			end)
@@ -436,12 +437,12 @@ local function BuildMain()
 	headName:SetPoint("LEFT", tableHead, "LEFT", 16, 0)
 	headName:SetText(L["Beast"])
 	headLevel = PaintedText(main, "label", "muted")
-	headLevel:SetPoint("LEFT", tableHead, "LEFT", 166, 0)
+	headLevel:SetPoint("LEFT", tableHead, "LEFT", 182, 0)
 	headLevel:SetWidth(40)
 	headLevel:SetJustifyH("RIGHT")
 	headLevel:SetText(L["Level"])
 	headZone = PaintedText(main, "label", "muted")
-	headZone:SetPoint("LEFT", tableHead, "LEFT", 218, 0)
+	headZone:SetPoint("LEFT", tableHead, "LEFT", 234, 0)
 	headZone:SetText(L["Zone"])
 
 	scroll = CreateFrame("ScrollFrame", nil, main)
@@ -476,16 +477,16 @@ local function BuildMain()
 		rule:SetHeight(1)
 		row.name = row:CreateFontString(nil, "ARTWORK", Font("strong"))
 		row.name:SetPoint("LEFT", 16, 0)
-		row.name:SetWidth(148)
+		row.name:SetWidth(164)
 		row.name:SetJustifyH("LEFT")
 		row.name:SetWordWrap(false)
 		row.level = row:CreateFontString(nil, "ARTWORK", Font("body"))
-		row.level:SetPoint("LEFT", 166, 0)
+		row.level:SetPoint("LEFT", 182, 0)
 		row.level:SetWidth(40)
 		row.level:SetJustifyH("RIGHT")
 		row.zone = row:CreateFontString(nil, "ARTWORK", Font("body"))
-		row.zone:SetPoint("LEFT", 218, 0)
-		row.zone:SetWidth(TABLE_W - 218 - 10)
+		row.zone:SetPoint("LEFT", 234, 0)
+		row.zone:SetWidth(TABLE_W - 234 - 10)
 		row.zone:SetJustifyH("LEFT")
 		row.zone:SetWordWrap(false)
 		row:SetScript("OnClick", function(self)
@@ -521,9 +522,6 @@ local function BuildMain()
 	mapFrame:SetPoint("TOPLEFT", detail, "TOPLEFT", 0, 0)
 	local mapBackground = PaintedTexture(mapFrame, "BACKGROUND", "alt")
 	mapBackground:SetAllPoints()
-	mapArt = mapFrame:CreateTexture(nil, "BORDER")
-	mapArt:SetAllPoints()
-	mapArt:Hide()
 	local mapEdge = PaintedTexture(mapFrame, "BACKGROUND", "line", nil, -1)
 	mapEdge:SetPoint("TOPLEFT", -1, 1)
 	mapEdge:SetPoint("BOTTOMRIGHT", 1, -1)
@@ -568,7 +566,7 @@ local function BuildMain()
 	waypointButton:SetPoint("BOTTOMLEFT", detail, "BOTTOMLEFT", 0, BUTTON_H + 8)
 	waypointButton:SetScript("OnClick", function() UI.PlaceWaypoint(ns.state and ns.state.beast) end)
 
-	mapButton = PillButton(detail, MAP_W, L["Map"], false)
+	mapButton = PillButton(detail, MAP_W, L["Show on map"], false)
 	mapButton:SetPoint("BOTTOMLEFT", detail, "BOTTOMLEFT", 0, 0)
 	mapButton:SetScript("OnClick", function() UI.OpenMap(ns.state and ns.state.beast) end)
 end
@@ -717,8 +715,47 @@ local function HidePin()
 	for _, part in ipairs({ pinParts.ring, pinParts.hole, pinParts.dot }) do part:Hide() end
 end
 
+-- The zone map is a grid of tiles (row by row, usually 256 px) covering a
+-- layer of layerWidth x layerHeight (1002 x 668). Each tile is scaled into the
+-- mini map; the last column and row are cropped to the layer's edge.
+local mapTiles = {}
+
+local function HideMapArt()
+	for _, tile in ipairs(mapTiles) do tile:Hide() end
+end
+
+-- Draws the tiles of `layer`; false when there is nothing to draw.
+local function DrawMapArt(layer, textures)
+	local layerW, layerH = tonumber(layer.layerWidth), tonumber(layer.layerHeight)
+	local tileW, tileH = tonumber(layer.tileWidth), tonumber(layer.tileHeight)
+	if not (layerW and layerH and tileW and tileH) or layerW <= 0 or layerH <= 0 or tileW <= 0 or tileH <= 0 then
+		return false
+	end
+	local columns = math.ceil(layerW / tileW)
+	local scaleX, scaleY = MAP_W / layerW, MAP_H / layerH
+	for index, fileID in ipairs(textures) do
+		local column, row = (index - 1) % columns, math.floor((index - 1) / columns)
+		local shownW = math.min(tileW, layerW - column * tileW)
+		local shownH = math.min(tileH, layerH - row * tileH)
+		if shownW > 0 and shownH > 0 then
+			local tile = mapTiles[index]
+			if not tile then
+				tile = mapFrame:CreateTexture(nil, "BORDER")
+				mapTiles[index] = tile
+			end
+			tile:SetTexture(fileID)
+			tile:SetTexCoord(0, shownW / tileW, 0, shownH / tileH)
+			tile:SetSize(shownW * scaleX, shownH * scaleY)
+			tile:ClearAllPoints()
+			tile:SetPoint("TOPLEFT", mapFrame, "TOPLEFT", column * tileW * scaleX, -row * tileH * scaleY)
+			tile:Show()
+		end
+	end
+	return true
+end
+
 local function UpdateDetailMap(entry)
-	mapArt:Hide()
+	HideMapArt()
 	HidePin()
 	mapHint:Show()
 	if not entry then
@@ -730,16 +767,15 @@ local function UpdateDetailMap(entry)
 	if not (C_Map and C_Map.GetMapArtLayers and C_Map.GetMapArtLayerTextures) then return end
 	local okLayers, layers = pcall(C_Map.GetMapArtLayers, entry.map)
 	if not okLayers or type(layers) ~= "table" or not layers[1] then return end
-	local okTiles, tiles = pcall(C_Map.GetMapArtLayerTextures, entry.map, 1, 0)
+	local okTiles, tiles = pcall(C_Map.GetMapArtLayerTextures, entry.map, 1)
 	if not okTiles or type(tiles) ~= "table" or not tiles[1] then return end
-	mapArt:SetTexture(tiles[1])
-	mapArt:Show()
+	if not DrawMapArt(layers[1], tiles) then return end
 	mapHint:Hide()
 	local px = math.floor((entry.x / 100) * MAP_W + 0.5)
 	local py = math.floor((entry.y / 100) * MAP_H + 0.5)
 	for _, part in ipairs({ pinParts.ring, pinParts.hole, pinParts.dot }) do
 		part:ClearAllPoints()
-		part:SetPoint("CENTER", mapArt, "TOPLEFT", px, -py)
+		part:SetPoint("CENTER", mapFrame, "TOPLEFT", px, -py)
 		part:Show()
 	end
 end
@@ -901,7 +937,7 @@ function UI.Render()
 		end
 		detailZone:SetText(zone ~= "" and (zone .. " · " .. position) or position)
 		-- A position the hunter found themselves is theirs, not the data's.
-		detailHint:SetText(beast.seenPosition and L["Position vue par toi"]
+		detailHint:SetText(beast.seenPosition and L["Position you saw"]
 			or L["Other beasts are sorted by level."])
 		waypointButton:SetShown(beast.map ~= nil and beast.x ~= nil and beast.y ~= nil)
 		mapButton:SetShown(beast.map ~= nil)
@@ -952,18 +988,156 @@ function UI.PlaceWaypoint(entry)
 		entry.name, ns.Coord(x), ns.Coord(y)))
 end
 
+-----------------------------------------------------------------------------
+-- Show on map: the world map opens on the beast's zone with the Atlas's own
+-- point on it. Forever's user waypoint is not reliable on the map, so the
+-- point is a frame on the map canvas, as ForeverDungeonJournal does. It is
+-- placed again while the map is open and shows on the beast's zone only.
+-----------------------------------------------------------------------------
+
+local WORLD_PIN = 36
+local mapTarget -- { map, x, y (0-1), name, place } of the last beast shown
+local worldPin  -- { driver, pin } once built
+
+local function MapCanvas()
+	if not WorldMapFrame then return nil end
+	if type(WorldMapFrame.GetCanvas) == "function" then
+		local ok, canvas = pcall(WorldMapFrame.GetCanvas, WorldMapFrame)
+		if ok and canvas then return canvas end
+	end
+	local scroll = WorldMapFrame.ScrollContainer
+	return scroll and (scroll.Child or scroll) or nil
+end
+
+local function ShownMapID()
+	if not (WorldMapFrame and type(WorldMapFrame.GetMapID) == "function") then return nil end
+	local ok, mapID = pcall(WorldMapFrame.GetMapID, WorldMapFrame)
+	return ok and mapID or nil
+end
+
+-- The point is created on the map canvas itself, as ForeverDungeonJournal's
+-- pins are: a frame made elsewhere and moved there keeps a strata below the
+-- map and is never seen. Its size is in canvas units, so it zooms with the map.
+local function CreateWorldPin(canvas)
+	local pin = CreateFrame("Button", nil, canvas)
+	pin:SetSize(WORLD_PIN, WORLD_PIN)
+	pin:SetFrameLevel(10000)
+	pin:EnableMouse(true)
+	pin:RegisterForClicks("RightButtonUp")
+	for _, part in ipairs({ { 34, "bg", 0.6 }, { 24, "accent" }, { 15, "bg" }, { 8, "accent" } }) do
+		local disc = pin:CreateTexture(nil, "OVERLAY")
+		disc:SetTexture(DISC)
+		disc:SetSize(part[1], part[1])
+		disc:SetPoint("CENTER")
+		painters[#painters + 1] = { object = disc, kind = "vertex", token = part[2], alpha = part[3] }
+	end
+	pin:SetScript("OnEnter", function(self)
+		if not (GameTooltip and mapTarget) then return end
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+		GameTooltip:AddLine(mapTarget.name or "")
+		if mapTarget.place then GameTooltip:AddLine(mapTarget.place, 1, 1, 1) end
+		GameTooltip:AddLine(L["Right-click: remove the point"], 0.6, 0.6, 0.6)
+		GameTooltip:Show()
+	end)
+	pin:SetScript("OnLeave", function()
+		if GameTooltip then GameTooltip:Hide() end
+	end)
+	pin:SetScript("OnClick", function(self)
+		mapTarget = nil
+		self:Hide()
+		if GameTooltip then GameTooltip:Hide() end
+	end)
+	UI.Paint()
+	return pin
+end
+
+function UI.UpdateWorldPin()
+	if not worldPin then return end
+	local canvas = MapCanvas()
+	local pin = worldPin.pin
+	if not (mapTarget and mapTarget.x and canvas and ShownMapID() == mapTarget.map) then
+		if pin then pin:Hide() end
+		return
+	end
+	if not pin or pin:GetParent() ~= canvas then
+		if pin then pin:Hide() end
+		pin = CreateWorldPin(canvas)
+		worldPin.pin = pin
+	end
+	-- The map's own pin placement when the client has it, else canvas size x spot.
+	local placed = false
+	if type(WorldMapFrame.SetPinPosition) == "function" then
+		placed = pcall(WorldMapFrame.SetPinPosition, WorldMapFrame, pin, mapTarget.x, mapTarget.y)
+	end
+	if not placed then
+		local width, height = canvas:GetWidth() or 0, canvas:GetHeight() or 0
+		if width <= 1 or height <= 1 then
+			pin:Hide()
+			return
+		end
+		pin:ClearAllPoints()
+		pin:SetPoint("CENTER", canvas, "TOPLEFT", width * mapTarget.x, -height * mapTarget.y)
+	end
+	pin:Show()
+end
+
+local function BuildWorldPin()
+	-- Parented to the world map, so it only runs while the map is open: the
+	-- player may zoom, pan or change zone.
+	local driver = CreateFrame("Frame", nil, WorldMapFrame)
+	-- Asked for in combat: the map turns to the beast's zone when the player opens it.
+	driver:SetScript("OnShow", function()
+		if mapTarget and mapTarget.pending and type(WorldMapFrame.SetMapID) == "function" then
+			mapTarget.pending = nil
+			pcall(WorldMapFrame.SetMapID, WorldMapFrame, mapTarget.map)
+		end
+	end)
+	local wait = 0
+	driver:SetScript("OnUpdate", function(_, elapsed)
+		wait = wait - (elapsed or 0)
+		if wait > 0 then return end
+		wait = 0.05
+		UI.UpdateWorldPin()
+	end)
+	worldPin = { driver = driver }
+end
+
 function UI.OpenMap(entry)
 	if not entry or not entry.map then return end
-	if type(OpenWorldMap) == "function" and pcall(OpenWorldMap, entry.map) then return end
-	if WorldMapFrame then
-		if not WorldMapFrame:IsShown() then
-			if type(ToggleWorldMap) == "function" then
-				pcall(ToggleWorldMap)
-			elseif type(ShowUIPanel) == "function" then
-				pcall(ShowUIPanel, WorldMapFrame)
-			end
+	local place = entry.zoneName
+	if entry.x and entry.y then
+		place = (place and place ~= "" and (place .. " · ") or "") .. ns.Coord(entry.x) .. " " .. ns.Coord(entry.y)
+	end
+	mapTarget = {
+		map = entry.map, name = entry.name, place = place,
+		x = entry.x and entry.x / 100, y = entry.y and entry.y / 100,
+	}
+
+	-- Opening the map is blocked in combat; the point then waits for the player
+	-- to open it (M).
+	local inCombat = type(InCombatLockdown) == "function" and InCombatLockdown()
+	if not inCombat then
+		if C_Map and type(C_Map.OpenWorldMap) == "function" then
+			pcall(C_Map.OpenWorldMap, entry.map)
+		elseif type(OpenWorldMap) == "function" then
+			pcall(OpenWorldMap, entry.map)
 		end
-		if WorldMapFrame.SetMapID then pcall(WorldMapFrame.SetMapID, WorldMapFrame, entry.map) end
+		if WorldMapFrame and not WorldMapFrame:IsShown() and type(ShowUIPanel) == "function" then
+			pcall(ShowUIPanel, WorldMapFrame)
+		end
+	end
+	if not WorldMapFrame then return end
+	if WorldMapFrame:IsShown() and type(WorldMapFrame.SetMapID) == "function" then
+		pcall(WorldMapFrame.SetMapID, WorldMapFrame, entry.map)
+	end
+	if not worldPin then BuildWorldPin() end
+	UI.UpdateWorldPin()
+	if not mapTarget.x then return end
+	if WorldMapFrame:IsShown() then
+		ns.Print(L["%s shown on the map."]:format(entry.name or ""))
+	else
+		mapTarget.pending = true
+		ns.Print(L["Open the map (M) to see %s: the map cannot open during combat."]:format(entry.name or ""))
 	end
 end
 

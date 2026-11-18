@@ -307,7 +307,7 @@ local function NoteUnit(unit)
 	if sighting.firstSpot then
 		local name = ns.Planner.BeastName(ns.beasts and ns.beasts[sighting.id], sighting.id)
 		if name == "" then name = sighting.name or "?" end
-		ns.Print(L["position de %s notée."]:format(name))
+		ns.Print(L["%s position noted."]:format(name))
 	end
 	ns.QueueRefresh()
 end

@@ -1,9 +1,17 @@
 -- Atlas de chasse · every player-facing string.
--- Keys are English so the code reads in one language; values are what the
--- player sees (French). A missing key falls back to the key, never to nil.
+-- Keys are the English text: an English client (or any client but frFR) shows
+-- the keys themselves. A French client gets the values below. A missing key
+-- falls back to the key, never to nil.
 local _, ns = ...
 
-local L = {
+local function ClientLocale()
+	if type(GetLocale) ~= "function" then return "enUS" end
+	local ok, locale = pcall(GetLocale)
+	return ok and locale or "enUS"
+end
+ns.french = ClientLocale() == "frFR"
+
+local FRENCH = {
 	--- Window and sections -----------------------------------------------
 	["Atlas de chasse"] = "Atlas de chasse",
 	["Pet"] = "Familier",
@@ -46,7 +54,11 @@ local L = {
 
 	--- Detail panel -----------------------------------------------------
 	["Arrow + pin"] = "Flèche + repère",
-	["Map"] = "Carte",
+	["Show on map"] = "Montrer sur la carte",
+	["%s shown on the map."] = "%s : point posé sur la carte.",
+	["Open the map (M) to see %s: the map cannot open during combat."] =
+		"Ouvre la carte (M) pour voir %s : elle ne s'ouvre pas en combat.",
+	["Right-click: remove the point"] = "Clic droit : retirer le point",
 	["Other beasts are sorted by level."] = "Les autres bêtes sont triées par niveau.",
 	["No map for this beast."] = "Pas de carte pour cette bête.",
 	["No coordinates."] = "Pas de coordonnées.",
@@ -54,9 +66,13 @@ local L = {
 	["Rare"] = "Rare",
 	["Elite"] = "Élite",
 	["Unknown position"] = "Position inconnue",
-	["Position vue par toi"] = "Position vue par toi",
+	["Position you saw"] = "Position vue par toi",
 
 	--- Themes -----------------------------------------------------------
+	["Twilight"] = "Crépuscule",
+	["Night"] = "Nuit",
+	["Graphite"] = "Graphite",
+	["Parchment"] = "Parchemin",
 	["Theme"] = "Thème",
 	["Themes"] = "Thèmes",
 	["Theme set to %s."] = "Thème : %s.",
@@ -76,24 +92,27 @@ local L = {
 		"/atlas minimap : afficher / masquer le bouton de minicarte",
 	["/atlas help: this list"] = "/atlas help : cette liste",
 	["Pin placed: %s (%s, %s)."] = "Repère posé : %s (%s, %s).",
-	["position de %s notée."] = "position de %s notée.",
+	["%s position noted."] = "position de %s notée.",
 	["%s (%s, %s) — no pin on this client, look for it on the map."] =
 		"%s (%s, %s) — pas de repère sur ce client, cherche-la sur la carte.",
 	["error: %s"] = "erreur : %s",
 }
 
-ns.L = setmetatable(L, { __index = function(_, key) return key end })
+ns.L = setmetatable(ns.french and FRENCH or {}, { __index = function(_, key) return key end })
 
--- French prints coordinates with a comma ("67,4"), never a dot.
+-- French prints coordinates with a comma ("67,4"), English with a dot ("67.4").
 function ns.Coord(value)
 	if type(value) ~= "number" then return "?" end
-	return (string.format("%.1f", value):gsub("%.", ","))
+	local text = string.format("%.1f", value)
+	if ns.french then text = text:gsub("%.", ",") end
+	return text
 end
 
 -- "7 to 9 damage" (the data file's English effect) in French, when the shape
--- is the usual one. Anything else is shown untouched.
+-- is the usual one. Anything else, and every English client, sees it untouched.
 function ns.Effect(desc)
 	if type(desc) ~= "string" or desc == "" then return nil end
+	if not ns.french then return desc end
 	local low, high = desc:match("^(%d+)%s+to%s+(%d+)%s+damage$")
 	if low then return low .. "-" .. high .. " dégâts" end
 	local min, max = desc:match("^(%d+)%s*%-%s*(%d+)%s+damage$")

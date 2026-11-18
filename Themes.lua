@@ -31,28 +31,28 @@ local function Theme(key, name, colors)
 end
 
 ns.themeList = {
-	Theme("crepuscule", "Crépuscule", {
+	Theme("crepuscule", ns.L["Twilight"], {
 		bg = "181d2d", panel = "1c2234", alt = "232a3f", sidebar = "121624",
 		sky = "283254", line = "3a4360",
 		text = "f7f8fd", dim = "c3cadd", muted = "9aa2b9",
 		accent = "e6ba66", onAccent = "0a0d14",
 		ok = "6bd999", danger = "f57373", npc = "94c9ff", place = "f5ad85", spell = "78dbed",
 	}),
-	Theme("nuit", "Nuit", {
+	Theme("nuit", ns.L["Night"], {
 		bg = "0b0e17", panel = "10141f", alt = "161c2a", sidebar = "070910",
 		sky = "1a2340", line = "28324b",
 		text = "eef1fa", dim = "b6bdd0", muted = "7d859b",
 		accent = "8fb2ff", onAccent = "070a14",
 		ok = "6bd999", danger = "f58a8a", npc = "a9d4ff", place = "f2b795", spell = "86e6f5",
 	}),
-	Theme("graphite", "Graphite", {
+	Theme("graphite", ns.L["Graphite"], {
 		bg = "1b1b1d", panel = "222225", alt = "2b2b2f", sidebar = "141416",
 		sky = "34343a", line = "44444b",
 		text = "f2f2f4", dim = "c6c6cc", muted = "9a9aa2",
 		accent = "d9d9df", onAccent = "141416",
 		ok = "8fd7a6", danger = "ef8a8a", npc = "b9d4ea", place = "e6c39f", spell = "a9dbe6",
 	}),
-	Theme("parchemin", "Parchemin", {
+	Theme("parchemin", ns.L["Parchment"], {
 		bg = "f4ecd8", panel = "fbf6e8", alt = "e9dec3", sidebar = "e6d8b7",
 		sky = "f7e3b6", line = "c2b08a",
 		text = "2a2118", dim = "4c4030", muted = "6d5c46",
