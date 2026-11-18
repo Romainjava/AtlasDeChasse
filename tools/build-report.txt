@@ -12,7 +12,7 @@ Output
   abilities         : 33
   ranks             : 156 (156 with a spell id)
   teacher entries   : 497
-  beasts            : 419 (361 with a French name)
+  beasts            : 419 (362 with a French name)
   spots             : 444
   families          : 19
   zones             : 47 (6 Alliance, 5 Horde, 36 nil/contested)
@@ -24,7 +24,7 @@ Coordinates
   dungeon-only teachers without a spot: 38 (Wowhead cannot help, no open world spot)
 
 Notes
-  361 of 419 teachers have a French name: Polestar_frFR/Names.lua
+  362 of 419 teachers have a French name: Polestar_frFR/Names.lua
   only registers 500 NPC ids per chunk, the rest stay nil (the UI falls back to en).
   Zone factions come from warcraft.wiki.gg bar colours, legend: 000033 Alliance territory, 330000 Horde territory, 333300 Contested territory, 003300 Combat zone.
   Zones the page does not list (capital cities, battlegrounds, Forever-only zones) stay nil.
