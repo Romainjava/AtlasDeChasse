@@ -1,0 +1,12 @@
+package-as: AtlasDeChasse
+manual-changelog: CHANGELOG.md
+
+ignore:
+  - .gitignore
+  - .opencode
+  - README.md
+  - README.fr.md
+  - CHANGELOG.md
+  - docs
+  - tools
+  - pkgmeta.yaml
