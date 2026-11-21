@@ -2,7 +2,7 @@
 -- teach the chosen rank in the middle, the selected beast and its map on the
 -- right. Every coloured region takes its colour from the active theme, so a
 -- theme switch repaints the open window through one function (UI.Paint).
-local _, ns = ...
+local addonName, ns = ...
 local L = ns.L
 
 local UI = {}
@@ -29,6 +29,19 @@ local BEAST_MAX = 24
 local TABLE_W = 364
 local MAP_W, MAP_H = 200, 133
 local BUTTON_H = 24
+
+-- The "Here" page: a two-column grid of cards the whole page scrolls through.
+local HERE_PAD = 18
+local HERE_CARD_H = 56
+local HERE_CARD_GAP = 8
+local HERE_SECTION_H = 26
+-- The whole data set never holds more than 24 now-ranks and 17 later-ranks in
+-- one zone, so a card pool this size shows every one of them.
+local HERE_MAX = 24
+-- Settled ranks are a memory, not a to-do: six of them, then a count.
+local HERE_DONE_MAX = 6
+local LEGEND_H = 32
+local PILL_H = 16
 
 -----------------------------------------------------------------------------
 -- Fonts and media. Inter (SIL OFL, Media\Fonts\Inter-OFL.txt) draws "→", which
@@ -89,6 +102,24 @@ local CHIPS = {
 	{ key = "dungeons", label = "Dungeons", width = 66 },
 }
 
+-- The "Here" page's sections, in reading order.
+local HERE_SECTIONS = {
+	{ key = "now", label = "Tame now", max = HERE_MAX },
+	{ key = "later", label = "When you have the level", max = HERE_MAX },
+	{ key = "done", label = "Already learned here", max = HERE_DONE_MAX },
+}
+
+-- Where a fact comes from, as the window words it: the pill says where, the
+-- meaning is the line the legend and the detail panel put next to it.
+local SOURCES = {
+	verified = { token = "ok", label = "Verified", meaning = "confirmed by taming" },
+	seen = { token = "npc", label = "Seen in game", meaning = "position noted in game" },
+	petopia = { token = "muted", label = "Petopia", meaning = "site source" },
+	hpj = { token = "muted", label = "HunterPetJournal", meaning = "site source" },
+	wowhead = { token = "muted", label = "Wowhead", meaning = "site source" },
+}
+local LEGEND_SOURCES = { "verified", "seen", "petopia" }
+
 local frame
 local painters = {}      -- static regions painted from the theme tokens
 local abilityGroups = {}
@@ -99,15 +130,17 @@ local headerGradient, titleName, titleRank, subtitle, learnedBadge
 local gearButton, closeButton
 local headName, headLevel, headZone
 local scroll, scrollChild, scrollOffset, tableEmpty
-local detailName, detailZone, detailHint
+local detailName, detailZone, detailHint, detailSource
 local detailMap
 local waypointButton, mapButton
 local themeMenu, themeRowList
 local chipLine
 
--- Header tabs: the rank planner, or the hidden pets page.
+-- Header tabs: the rank planner, the zone the hunter stands in, or the hidden
+-- pets page.
 local VIEWS = {
 	{ key = "abilities", label = "Abilities" },
+	{ key = "here", label = "Here" },
 	{ key = "secrets", label = "Hidden pets" },
 }
 local view = "abilities"
@@ -117,6 +150,11 @@ local secretName, secretTitle, secretZone, secretSteps, secretAbilities, secretS
 local secretMap, secretPills, secretButtons = nil, {}, {}
 local SECRET_STEPS_MAX = 6
 local SECRET_PANEL_W = 224
+
+-- The "Here" page and its parts.
+local herePage, hereScroll, hereChild, hereOffset, hereCardW
+local hereSections, hereLegend = {}, {}
+local hereEmptyZone, hereEmpty, hereData
 
 -----------------------------------------------------------------------------
 -- Paint helpers
@@ -203,6 +241,51 @@ end
 local function AbilityName(ability)
 	if not ability then return "" end
 	return ability.localName or ability.en or "?"
+end
+
+-- A pill with a centred label: the building block of the source and count
+-- pills. Paint gives it its colour, so a theme switch repaints it.
+local function PillLabel(parent, withMeaning)
+	local holder = CreateFrame("Frame", nil, parent)
+	holder:SetHeight(PILL_H)
+	holder.pill = Pill(holder, "BACKGROUND")
+	holder.label = holder:CreateFontString(nil, "ARTWORK", Font("label"))
+	holder.label:SetPoint("CENTER", 0, 0)
+	if withMeaning then
+		holder.meaning = holder:CreateFontString(nil, "ARTWORK", Font("small"))
+		holder.meaning:SetPoint("LEFT", holder, "RIGHT", 6, 0)
+		holder.meaning:SetJustifyH("LEFT")
+		holder.meaning:SetWordWrap(true)
+	end
+	return holder
+end
+
+-- A source pill: which fact a card, the legend or the detail panel rests on.
+-- Nothing is known at build, so it starts hidden.
+local function SourcePill(parent, withMeaning)
+	local holder = PillLabel(parent, withMeaning)
+	holder:Hide()
+	return holder
+end
+
+-- Says which source, or nothing at all when the data does not know one.
+local function SetSourcePill(holder, key)
+	local definition = key and SOURCES[key]
+	holder.key = definition and key or nil
+	holder:SetShown(definition ~= nil)
+	if not definition then return end
+	holder.label:SetText(L[definition.label])
+	local width = math.floor((holder.label:GetStringWidth() or 0) + 18)
+	holder:SetWidth(math.max(44, width))
+	if holder.meaning then holder.meaning:SetText(L[definition.meaning]) end
+end
+
+local function PaintSourcePill(holder)
+	local definition = holder.key and SOURCES[holder.key]
+	if not definition then return end
+	SetPillColor(holder.pill, definition.token, 0.16)
+	SetTextColor(holder.label, definition.token)
+	if holder.meaning then SetTextColor(holder.meaning, "muted") end
 end
 
 -- A small zone map (the detail panel's, the hidden pet page's): the zone art,
@@ -608,6 +691,11 @@ local function BuildMain()
 	detailZone:SetWidth(MAP_W)
 	detailZone:SetJustifyH("LEFT")
 	detailZone:SetWordWrap(true)
+	-- Where the panel's fact comes from; Render moves the hint under it.
+	detailSource = SourcePill(detail, true)
+	detailSource:SetPoint("TOPLEFT", detailZone, "BOTTOMLEFT", 0, -6)
+	-- the meaning shares the line, so it can never be wider than the panel
+	detailSource.meaning:SetPoint("RIGHT", detail, "RIGHT", 0, 0)
 	detailHint = PaintedText(detail, "small", "muted")
 	detailHint:SetPoint("TOPLEFT", detailZone, "BOTTOMLEFT", 0, -8)
 	detailHint:SetWidth(MAP_W)
@@ -773,6 +861,126 @@ local function BuildSecrets()
 	secretButtons = { waypoint, show }
 end
 
+-- The "Here" page: what the zone the hunter stands in can teach the pet's
+-- family, one card per (rank, beast) worth the tame. It covers the sidebar and
+-- the main area, like the hidden pets page, and scrolls as one block.
+local function BuildHere()
+	local page = Cover(frame, "bg")
+	page:SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -(HEADER_H + TAB_H + 1))
+	page:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -1, 1)
+	herePage = page
+	local pageW = W - 2
+	local cardW = math.floor((pageW - 2 * HERE_PAD - HERE_CARD_GAP) / 2)
+	hereCardW = cardW
+
+	hereScroll = CreateFrame("ScrollFrame", nil, page)
+	hereScroll:SetPoint("TOPLEFT", page, "TOPLEFT", 0, 0)
+	hereScroll:SetPoint("BOTTOMRIGHT", page, "BOTTOMLEFT", pageW, LEGEND_H)
+	hereChild = CreateFrame("Frame", nil, hereScroll)
+	hereChild:SetSize(pageW, 1)
+	hereScroll:SetScrollChild(hereChild)
+	hereOffset = 0
+
+	local function OnWheel(_, delta)
+		local maxScroll = math.max(0, (hereChild:GetHeight() or 0) - (hereScroll:GetHeight() or 0))
+		hereOffset = math.max(0, math.min(maxScroll, hereOffset - delta * HERE_CARD_H))
+		hereScroll:SetVerticalScroll(hereOffset)
+	end
+	hereScroll:SetScript("OnMouseWheel", OnWheel)
+	hereChild:SetScript("OnMouseWheel", OnWheel)
+
+	-- One card: the rank, the beast and the level it can be tamed at. Its
+	-- texts are coloured in Paint, where the section decides their tone.
+	local function NewCard()
+		local card = CreateFrame("Button", nil, hereChild)
+		card:SetSize(cardW, HERE_CARD_H)
+		-- the rim first, then the panel over it, so the edge shows as one pixel
+		local edge = PaintedTexture(card, "BACKGROUND", "line", nil, -1)
+		edge:SetPoint("TOPLEFT", -1, 1)
+		edge:SetPoint("BOTTOMRIGHT", 1, -1)
+		local background = PaintedTexture(card, "BACKGROUND", "panel")
+		background:SetAllPoints()
+		local hover = PaintedTexture(card, "HIGHLIGHT", "text", 0.05)
+		hover:SetAllPoints()
+		card.icon = card:CreateTexture(nil, "ARTWORK")
+		card.icon:SetPoint("LEFT", 12, 0)
+		card.icon:SetSize(28, 28)
+		card.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+		card.title = card:CreateFontString(nil, "ARTWORK", Font("strong"))
+		card.title:SetPoint("TOPLEFT", card, "TOPLEFT", 50, -11)
+		card.title:SetWidth(cardW - 50 - 70)
+		card.title:SetJustifyH("LEFT")
+		card.title:SetWordWrap(false)
+		card.pill = SourcePill(card)
+		card.beast = card:CreateFontString(nil, "ARTWORK", Font("small"))
+		card.beast:SetPoint("TOPLEFT", card.title, "BOTTOMLEFT", 0, -3)
+		card.beast:SetWidth(cardW - 50 - 74)
+		card.beast:SetJustifyH("LEFT")
+		card.beast:SetWordWrap(false)
+		card.level = card:CreateFontString(nil, "ARTWORK", Font("body"))
+		card.level:SetPoint("RIGHT", card, "RIGHT", -12, 0)
+		card.level:SetJustifyH("RIGHT")
+		card:SetScript("OnMouseWheel", OnWheel)
+		card:SetScript("OnClick", function(self)
+			local entry = self.entry
+			if not (entry and ns.FocusRank) then return end
+			ns.FocusRank(entry.ability.key, entry.rank, entry.teacher and entry.teacher.id)
+		end)
+		return card
+	end
+
+	for _, definition in ipairs(HERE_SECTIONS) do
+		local section = { key = definition.key, label = definition.label, cards = {} }
+		section.header = CreateFrame("Frame", nil, hereChild)
+		section.header:SetWidth(cardW)
+		section.header:SetHeight(PILL_H)
+		section.title = PaintedText(section.header, "label", "dim")
+		section.title:SetPoint("LEFT", section.header, "LEFT", 0, 0)
+		section.count = PillLabel(section.header)
+		section.count:SetPoint("LEFT", section.title, "RIGHT", 8, 0)
+		for index = 1, definition.max do section.cards[index] = NewCard() end
+		section.more = hereChild:CreateFontString(nil, "ARTWORK", Font("small"))
+		section.more:SetJustifyH("LEFT")
+		section.more:Hide()
+		hereSections[#hereSections + 1] = section
+	end
+
+	-- The legend explains the three pills, on a hairline over the data's date.
+	local line = Hairline(page)
+	line:SetPoint("TOPLEFT", page, "BOTTOMLEFT", 0, LEGEND_H)
+	line:SetPoint("TOPRIGHT", page, "BOTTOMRIGHT", 0, LEGEND_H)
+	line:SetHeight(1)
+	local previous
+	for index = 1, #LEGEND_SOURCES do
+		local group = CreateFrame("Frame", nil, page)
+		group:SetHeight(PILL_H)
+		group.pill = SourcePill(group, true)
+		group.pill:SetPoint("LEFT", group, "LEFT", 0, 0)
+		if previous then
+			group:SetPoint("LEFT", previous, "RIGHT", 18, 0)
+		else
+			group:SetPoint("LEFT", page, "BOTTOMLEFT", HERE_PAD, LEGEND_H / 2)
+		end
+		hereLegend[index] = group
+		previous = group
+	end
+	hereData = PaintedText(page, "small", "muted")
+	hereData:SetPoint("RIGHT", page, "BOTTOMRIGHT", -HERE_PAD, LEGEND_H / 2)
+	hereData:SetJustifyH("RIGHT")
+
+	-- The two empty states, above the scroll frame so they are never covered.
+	local function PageMessage()
+		local text = PaintedText(page, "small", "muted")
+		text:SetPoint("TOPLEFT", page, "TOPLEFT", HERE_PAD, -20)
+		text:SetWidth(pageW - 2 * HERE_PAD)
+		text:SetJustifyH("LEFT")
+		text:SetWordWrap(true)
+		text:Hide()
+		return text
+	end
+	hereEmptyZone, hereEmpty = PageMessage(), PageMessage()
+end
+
 function UI.Build()
 	if frame then return frame end
 	if type(CreateFrame) ~= "function" then return nil end
@@ -803,6 +1011,7 @@ function UI.Build()
 	BuildSidebar()
 	BuildMain()
 	BuildSecrets()
+	BuildHere()
 
 	if type(UISpecialFrames) == "table" then
 		local named = true
@@ -923,6 +1132,29 @@ function UI.Paint()
 		SetTextColor(pill.label, pill.met and "ok" or "danger")
 	end
 	for _, button in ipairs(secretButtons) do PaintPillButton(button) end
+
+	-- Here page: a settled card reads muted, a waiting one dim, and a level the
+	-- hunter cannot tame yet is red. The source pills carry their own token.
+	for _, section in ipairs(hereSections) do
+		SetPillColor(section.count.pill, "alt")
+		SetTextColor(section.count.label, "muted")
+		SetTextColor(section.more, "muted")
+		local settled = section.key == "done"
+		local waiting = section.key == "later"
+		for _, card in ipairs(section.cards) do
+			local entry = card.entry
+			if entry then
+				SetTextColor(card.title, settled and "muted" or (waiting and "dim" or "text"))
+				SetTextColor(card.beast, settled and "muted" or "npc")
+				local high = entry.teacher and entry.teacher.high
+				SetTextColor(card.level, high and "danger"
+					or (settled and "muted" or (waiting and "dim" or "ok")))
+				PaintSourcePill(card.pill)
+			end
+		end
+	end
+	for _, group in ipairs(hereLegend) do PaintSourcePill(group.pill) end
+	if detailSource then PaintSourcePill(detailSource) end
 end
 
 -----------------------------------------------------------------------------
@@ -1049,6 +1281,12 @@ function UI.Render()
 	local state = ns.state or {}
 	local pet = state.pet or {}
 
+	-- The filter chips belong to the rank table alone: the full-page views
+	-- cover the area they sit in.
+	local onAbilities = view == "abilities"
+	frame.chipRow:SetShown(onAbilities)
+	chipLine:SetShown(onAbilities)
+
 	local label, details = PetCardText(pet)
 	petName:SetText(label)
 	petStats:SetText(details)
@@ -1157,9 +1395,19 @@ function UI.Render()
 		waypointButton:Hide()
 		mapButton:Hide()
 	end
+	-- Where the selected rank's fact comes from, under the zone and position.
+	local spellID = beast and state.rank and state.rank.spell
+	SetSourcePill(detailSource, spellID and ns.Planner.Source(beast.id, spellID) or nil)
+	local anchor = detailSource.key and detailSource or detailZone
+	if detailHint.anchor ~= anchor then
+		detailHint.anchor = anchor
+		detailHint:ClearAllPoints()
+		detailHint:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -8)
+	end
 	ShowMiniMap(detailMap, beast)
 
 	UI.RenderSecrets()
+	UI.RenderHere()
 	UI.Paint()
 end
 
@@ -1226,9 +1474,6 @@ function UI.RenderSecrets()
 	local open = view == "secrets"
 	secretList:SetShown(open)
 	secretBody:SetShown(open)
-	-- The rank filters mean nothing here: the strip goes back to the tabs alone.
-	frame.chipRow:SetShown(not open)
-	chipLine:SetShown(not open)
 	if not open then return end
 
 	titleName:SetText(L["Hidden pets"])
@@ -1290,6 +1535,161 @@ function UI.RenderSecrets()
 	for _, button in ipairs(secretButtons) do button:SetShown(target ~= nil) end
 	ShowMiniMap(secretMap, target)
 	UI.Paint()
+end
+
+-----------------------------------------------------------------------------
+-- Here page: what this zone can teach the pet's family
+-----------------------------------------------------------------------------
+
+-- The data's date in the client's order: dd/mm/yyyy on a French client, the
+-- data file's own yyyy-mm-dd everywhere else.
+local function DataDate()
+	local date = ns.dataDate
+	if type(date) ~= "string" then return nil end
+	if not ns.french then return date end
+	local year, month, day = date:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)$")
+	if not year then return date end
+	return ("%s/%s/%s"):format(day, month, year)
+end
+
+-- ## Version: from the toc, through whichever reader the client has; a client
+-- with neither simply shows no version.
+local function AddonVersion()
+	local reader = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+	if type(reader) ~= "function" then return nil end
+	local ok, version = pcall(reader, addonName, "Version")
+	if ok and type(version) == "string" and version ~= "" then return version end
+	return nil
+end
+
+-- One card: the rank, what the pet already holds, where the fact comes from,
+-- the beast and the level it can be tamed at.
+local function FillHereCard(card, entry, known)
+	local title = L["%s %s"]:format(AbilityName(entry.ability), tostring(entry.rank))
+	local have = known[entry.ability.key] or 0
+	if have > 0 then title = title .. " · " .. L["you have %d"]:format(have) end
+	card.title:SetText(title)
+	card.icon:SetTexture(entry.ability.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+	SetSourcePill(card.pill, entry.source)
+	-- the pill follows the title, wherever the title ends
+	card.pill:ClearAllPoints()
+	card.pill:SetPoint("LEFT", card.title, "LEFT",
+		math.min(card.title:GetStringWidth() or 0, card.title:GetWidth() or 0) + 6, 0)
+	local teacher = entry.teacher or {}
+	local beast = teacher.name or ""
+	-- A rank the pet is too low for says what level it waits for.
+	if entry.status == "petLevel" and entry.record and entry.record.petLevel then
+		local needed = L["pet lvl %d needed"]:format(entry.record.petLevel)
+		beast = beast ~= "" and (beast .. " · " .. needed) or needed
+	end
+	card.beast:SetText(beast)
+	card.level:SetText(teacher.levelText or "")
+end
+
+function UI.RenderHere()
+	if not herePage then return end
+	local open = view == "here"
+	herePage:SetShown(open)
+	if not open then return end
+
+	local state = ns.state or {}
+	local pet = state.pet or {}
+	-- One pass over every beast of the zone, read for the family on show: no
+	-- frame ever calls this, only a render.
+	local here = ns.Planner.Here({
+		mapID = ns.CurrentMap and ns.CurrentMap() or nil,
+		familyId = state.familyId,
+		petLevel = pet.exists and pet.level or nil,
+		spells = pet.spells,
+		learned = ns.charDB and ns.charDB.learned or nil,
+		playerLevel = ns.PlayerLevel and ns.PlayerLevel() or nil,
+		faction = ns.PlayerFaction and ns.PlayerFaction() or nil,
+	})
+	local known = ns.Planner.Known(pet.spells)
+
+	-- Header: the zone, then the family it is read for and what it holds.
+	local zoneName = here.zoneName
+	titleName:SetText(zoneName or L["Here"])
+	titleRank:SetText("")
+	learnedBadge:Hide()
+	local summary = ""
+	if zoneName then
+		local who = state.familyId and ns.Pet.DisplayName(state.familyId) or ""
+		if pet.exists and pet.level then
+			who = L["%s %s"]:format(who, L["level %d"]:format(pet.level))
+		end
+		summary = L["%s · %d ranks to take in this zone"]:format(who, #here.now)
+	end
+	subtitle:SetText(summary)
+
+	-- Sections and their cards, stacked from the top; only what holds
+	-- something takes room.
+	local y = -10
+	for _, section in ipairs(hereSections) do
+		local entries = here[section.key] or {}
+		local visible = math.min(#entries, #section.cards)
+		section.header:SetShown(visible > 0)
+		section.more:Hide()
+		if visible > 0 then
+			section.title:SetText(L[section.label])
+			section.count.label:SetText(tostring(#entries))
+			section.count:SetWidth(math.max(22, math.floor((section.count.label:GetStringWidth() or 0) + 16)))
+			section.header:ClearAllPoints()
+			section.header:SetPoint("TOPLEFT", hereChild, "TOPLEFT", HERE_PAD, y)
+			local top = y - HERE_SECTION_H
+			for index = 1, #section.cards do
+				local card = section.cards[index]
+				local entry = entries[index]
+				card.entry = entry
+				card:SetShown(entry ~= nil)
+				if entry then
+					local column, row = (index - 1) % 2, math.floor((index - 1) / 2)
+					card:ClearAllPoints()
+					card:SetPoint("TOPLEFT", hereChild, "TOPLEFT",
+						HERE_PAD + column * (hereCardW + HERE_CARD_GAP),
+						top - row * (HERE_CARD_H + HERE_CARD_GAP))
+					FillHereCard(card, entry, known)
+				end
+			end
+			local rows = math.ceil(visible / 2)
+			y = top - rows * HERE_CARD_H - (rows - 1) * HERE_CARD_GAP
+			local extra = #entries - visible
+			if extra > 0 then
+				section.more:ClearAllPoints()
+				section.more:SetPoint("TOPLEFT", hereChild, "TOPLEFT", HERE_PAD, y - 4)
+				section.more:SetText(L["+%d more"]:format(extra))
+				section.more:Show()
+				y = y - 18
+			end
+			y = y - 14
+		end
+	end
+	hereChild:SetHeight(math.max(1, -y + 6))
+	local maxScroll = math.max(0, (hereChild:GetHeight() or 0) - (hereScroll:GetHeight() or 0))
+	hereOffset = math.max(0, math.min(maxScroll, hereOffset))
+	hereScroll:SetVerticalScroll(hereOffset)
+
+	-- The two empty states: no zone at all, or a zone with nothing left.
+	local total = #here.now + #here.later + #here.done
+	local unknownZone = zoneName == nil
+	hereEmptyZone:SetShown(unknownZone)
+	if unknownZone then
+		hereEmptyZone:SetText(L["Unknown zone: the game does not give your position here."])
+	end
+	local nothing = zoneName ~= nil and total == 0
+	hereEmpty:SetShown(nothing)
+	if nothing then hereEmpty:SetText(L["Nothing to learn in this zone for your pet."]) end
+
+	-- Legend pills, then the date of the data and the addon version.
+	for index, group in ipairs(hereLegend) do
+		SetSourcePill(group.pill, LEGEND_SOURCES[index])
+		group:SetWidth((group.pill:GetWidth() or 0) + 6 + (group.pill.meaning:GetStringWidth() or 0))
+	end
+	local date, version = DataDate(), AddonVersion()
+	local footer = {}
+	if date then footer[#footer + 1] = L["Data from %s"]:format(date) end
+	if version then footer[#footer + 1] = "v" .. version end
+	hereData:SetText(table.concat(footer, " · "))
 end
 
 -----------------------------------------------------------------------------

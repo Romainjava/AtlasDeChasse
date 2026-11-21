@@ -15,6 +15,8 @@ local EVENTS = {
 	"UNIT_PET",
 	"PET_BAR_UPDATE",
 	"SPELLS_CHANGED",
+	"UNIT_SPELLCAST_SENT",
+	"UNIT_SPELLCAST_CHANNEL_START",
 	"UNIT_LEVEL",
 	"PLAYER_LEVEL_UP",
 	"ZONE_CHANGED_NEW_AREA",
@@ -48,6 +50,9 @@ function ns.EnsureDB()
 	if type(db.minimap.hide) ~= "boolean" then db.minimap.hide = false end
 	if type(db.familyNames) ~= "table" then db.familyNames = {} end
 	if type(db.seen) ~= "table" then db.seen = {} end
+	if type(db.tamed) ~= "table" then db.tamed = {} end
+	-- Beast alerts, on until the hunter turns them off (/atlas alerts).
+	if type(db.alerts) ~= "boolean" then db.alerts = true end
 
 	if type(_G[CHAR_DB_NAME]) ~= "table" then _G[CHAR_DB_NAME] = {} end
 	local charDB = _G[CHAR_DB_NAME]
@@ -189,6 +194,35 @@ function ns.ToggleFilter(filterKey)
 	if ns.ui and ns.ui.Render then ns.ui.Render() end
 end
 
+-- Where a card of the "Here" tab, the alert toast and the beast tooltip send
+-- the hunter: the window open on the rank's plan entry, that beast chosen. A
+-- rank the pet already knows has no plan entry: the ability's own entry stands
+-- for it, whatever its rank.
+function ns.FocusRank(abilityKey, rank, npcId)
+	if not abilityKey then return end
+	if not ns.db then ns.EnsureDB() end
+	ns.Open()
+	if ns.ui and ns.ui.SelectView then ns.ui.SelectView("abilities") end
+	local plan = state.plan or {}
+	local entry = FindInPlan(plan, abilityKey, rank)
+	if not entry then
+		for _, groupKey in ipairs(GROUP_ORDER) do
+			for _, candidate in ipairs(plan[groupKey] or {}) do
+				if candidate.ability.key == abilityKey then entry = candidate break end
+			end
+			if entry then break end
+		end
+	end
+	if entry then
+		state.selection = entry
+		state.beast, state.beastId = nil, nil
+		RecomputeRank()
+		if ns.ui and ns.ui.Render then ns.ui.Render() end
+	end
+	-- A beast the filters hide has nothing to select: the rank still shows.
+	if type(npcId) == "number" then ns.SelectBeast(npcId) end
+end
+
 function ns.BrowseFamily(familyId)
 	if type(familyId) ~= "number" then return end
 	state.browseFamily = familyId
@@ -314,7 +348,20 @@ local function NoteUnit(unit)
 	ns.QueueRefresh()
 end
 
-local function OnEvent(_, event, arg1)
+-- The tame the hunter just started or finished: a freshly tamed beast knows the
+-- ranks it teaches, so its pet says what the beast can give. Nothing to say in
+-- chat about it.
+local function NoteTame(spellID)
+	if not (ns.Discovery and ns.Discovery.TameStart) then return end
+	pcall(ns.Discovery.TameStart, spellID)
+end
+
+local function CheckTame()
+	if not (ns.Discovery and ns.Discovery.TameCheck) then return end
+	pcall(ns.Discovery.TameCheck)
+end
+
+local function OnEvent(_, event, arg1, arg2, arg3, arg4)
 	if event == "ADDON_LOADED" then
 		if arg1 == addonName then ns.EnsureDB() end
 	elseif event == "PLAYER_LOGIN" then
@@ -339,7 +386,20 @@ local function OnEvent(_, event, arg1)
 			ns.ui.RenderSecrets()
 		end
 	elseif event == "UNIT_PET" then
-		if arg1 == nil or arg1 == "player" then ns.QueueRefresh() end
+		if arg1 == nil or arg1 == "player" then
+			CheckTame()
+			ns.QueueRefresh()
+		end
+	elseif event == "UNIT_SPELLCAST_SENT" then
+		-- unit, target name, castGUID, spellID: the cast is in, the pet follows
+		if arg1 == "player" then NoteTame(arg4) end
+	elseif event == "UNIT_SPELLCAST_CHANNEL_START" then
+		-- unit, castGUID, spellID: the same cast, on the clients that channel it
+		if arg1 == "player" then NoteTame(arg3) end
+	elseif event == "SPELLS_CHANGED" then
+		-- the pet's spellbook can fill after the pet itself appeared
+		CheckTame()
+		ns.QueueRefresh()
 	elseif event == "UNIT_LEVEL" then
 		if arg1 == nil or arg1 == "pet" or arg1 == "player" then ns.QueueRefresh() end
 	else
@@ -366,6 +426,7 @@ local function PrintHelp()
 	ns.Print("  " .. L["/atlas: open or close the window"])
 	ns.Print("  " .. L["/atlas theme <name>: switch theme"])
 	ns.Print("  " .. L["/atlas minimap: show or hide the minimap button"])
+	ns.Print("  " .. L["/atlas alerts: turn beast alerts on or off"])
 	ns.Print("  " .. L["/atlas help: this list"])
 	ns.Print("  " .. L["Available themes: %s"]:format(table.concat(ns.ThemeNames(), ", ")))
 end
@@ -389,6 +450,11 @@ local function HandleSlash(message)
 			ns.db.minimap.hide = not ns.db.minimap.hide
 			if ns.UpdateMinimapButton then pcall(ns.UpdateMinimapButton) end
 			ns.Print(ns.db.minimap.hide and L["Minimap button hidden."] or L["Minimap button shown."])
+		end
+	elseif command == "alerts" or command == "alertes" then
+		if ns.db then
+			ns.db.alerts = not ns.db.alerts
+			ns.Print(ns.db.alerts and L["Beast alerts on."] or L["Beast alerts off."])
 		end
 	elseif command == "help" or command == "aide" then
 		PrintHelp()

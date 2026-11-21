@@ -68,6 +68,38 @@ local FRENCH = {
 	["Unknown position"] = "Position inconnue",
 	["Position you saw"] = "Position vue par toi",
 
+	--- Here tab ---------------------------------------------------------
+	["Here"] = "Ici",
+	["Tame now"] = "Apprivoise maintenant",
+	["When you have the level"] = "Quand tu auras le niveau",
+	["Already learned here"] = "Déjà appris ici",
+	["+%d more"] = "+%d de plus",
+	["%s · %d ranks to take in this zone"] = "%s · %d rangs à prendre dans cette zone",
+	["you have %d"] = "tu as %d",
+	["pet lvl %d needed"] = "familier niv. %d requis",
+	["Nothing to learn in this zone for your pet."] =
+		"Rien à apprendre dans cette zone pour ton familier.",
+	["Unknown zone: the game does not give your position here."] =
+		"Zone inconnue : le jeu ne donne pas ta position ici.",
+
+	--- Sources, data date -----------------------------------------------
+	["Verified"] = "Vérifié",
+	["confirmed by taming"] = "confirmé par apprivoisement",
+	["Seen in game"] = "Vu en jeu",
+	["position noted in game"] = "position relevée en jeu",
+	["site source"] = "source du site",
+	["Data from %s"] = "Données du %s",
+
+	--- Beast tooltip and alert toast (Alerts.lua) -----------------------
+	["%s %d: tame it"] = "%s %d : à apprivoiser",
+	["%s %d: pet level %d needed"] = "%s %d : familier niv. %d requis",
+	["%s %d: too high for you"] = "%s %d : trop haute pour toi",
+	["%s %d: already known"] = "%s %d : déjà appris",
+	["%s %d: teach it at Beast Training"] = "%s %d : à enseigner au Dressage des bêtes",
+	["%s teaches %s"] = "%s enseigne %s",
+	["Your pet can learn it · click to open the atlas"] =
+		"Ton familier peut l'apprendre · clic pour ouvrir l'atlas",
+
 	--- Hidden pets tab --------------------------------------------------
 	["Abilities"] = "Techniques",
 	["Hidden pets"] = "Familiers cachés",
@@ -100,6 +132,10 @@ local FRENCH = {
 	["/atlas theme <name>: switch theme"] = "/atlas theme <nom> : changer de thème",
 	["/atlas minimap: show or hide the minimap button"] =
 		"/atlas minimap : afficher / masquer le bouton de minicarte",
+	["/atlas alerts: turn beast alerts on or off"] =
+		"/atlas alerts : active ou coupe les alertes de bêtes",
+	["Beast alerts on."] = "Alertes de bêtes activées.",
+	["Beast alerts off."] = "Alertes de bêtes coupées.",
 	["/atlas help: this list"] = "/atlas help : cette liste",
 	["Pin placed: %s (%s, %s)."] = "Repère posé : %s (%s, %s).",
 	["%s position noted."] = "position de %s notée.",

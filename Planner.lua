@@ -25,6 +25,8 @@ end
 
 local spellIndex = {}   -- [spellID] = { ability = ability, rank = n }
 local nameIndex = {}    -- [normalized name] = ability
+-- the same facts the other way round: what each beast teaches
+local beastIndex = {}   -- [npcId] = { { ability = ability, rank = n, record = <rank record> }, ... }
 
 local ROMAN = { I = 1, V = 5, X = 10, L = 50, C = 100, D = 500, M = 1000 }
 
@@ -50,7 +52,7 @@ function Planner.Roman(text)
 end
 
 function Planner.BuildIndexes()
-	spellIndex, nameIndex = {}, {}
+	spellIndex, nameIndex, beastIndex = {}, {}, {}
 	for _, ability in ipairs(ns.abilities or {}) do
 		local first
 		for index, record in ipairs(ability.ranks or {}) do
@@ -59,6 +61,15 @@ function Planner.BuildIndexes()
 			local number = record.rank or index
 			if type(record.spell) == "number" then
 				spellIndex[record.spell] = { ability = ability, rank = number }
+			end
+			-- so the window can ask a beast, not only a rank, what it teaches
+			for _, teacherID in ipairs(record.teachers or {}) do
+				local list = beastIndex[teacherID]
+				if not list then
+					list = {}
+					beastIndex[teacherID] = list
+				end
+				list[#list + 1] = { ability = ability, rank = number, record = record }
 			end
 			if not first then first = record end
 		end
@@ -84,6 +95,14 @@ function Planner.BuildIndexes()
 			if ok and texture ~= nil then ability.icon = texture end
 		end
 	end
+end
+
+-- What one beast teaches: { { ability, rank, record }, ... } read off the
+-- reverse index above, so a tooltip can ask a beast instead of a rank. Empty
+-- when the data names it as no teacher.
+function Planner.Teaches(npcId)
+	if type(npcId) ~= "number" then return {} end
+	return beastIndex[npcId] or {}
 end
 
 -- The rank numbers an ability really has, in order (usually 1..n).
@@ -205,6 +224,22 @@ end
 -----------------------------------------------------------------------------
 -- The plan
 -----------------------------------------------------------------------------
+-- [ability.key] = highest rank the pet's spellbook holds: the one read the
+-- plan, the tooltip and the zone list all need. A spell the data does not
+-- carry, or one whose name and rank resolve to nothing, teaches nothing here.
+function Planner.Known(spells)
+	local known = {}
+	if type(spells) ~= "table" then return known end
+	for _, spell in ipairs(spells) do
+		local ability, rank = Planner.RankOfSpell(spell)
+		if ability then
+			local best = known[ability.key] or 0
+			if rank > best then known[ability.key] = rank end
+		end
+	end
+	return known
+end
+
 -- opts = { familyId, petLevel, spells = pet spellbook, learned = hunter ranks }
 -- Returns { now = {...}, later = {...}, trainer = {...}, maxed = {...} } where
 -- each entry is { ability, rank, known = highest rank the pet has }.
@@ -215,14 +250,7 @@ function Planner.Plan(opts)
 	if not familyId then return plan end
 	local petLevel = opts.petLevel or 0
 
-	local known = {}   -- [ability.key] = highest rank the pet already has
-	for _, spell in ipairs(opts.spells or {}) do
-		local ability, rank = Planner.RankOfSpell(spell)
-		if ability then
-			local best = known[ability.key] or 0
-			if rank > best then known[ability.key] = rank end
-		end
-	end
+	local known = Planner.Known(opts.spells)
 
 	for _, ability in ipairs(ns.abilities or {}) do
 		local numbers = Planner.RankNumbers(ability)
@@ -400,6 +428,166 @@ function Planner.Teachers(rankRecord, opts)
 		return (a.id or 0) < (b.id or 0)
 	end)
 	return list
+end
+
+-----------------------------------------------------------------------------
+-- One beast against the hunter's pet
+-----------------------------------------------------------------------------
+
+-- Why one rank of one ability is, or is not, worth a tame. ctx = { familyId,
+-- petLevel, known = Planner.Known(), learned = the hunter's learned table,
+-- playerLevel, beast }. Returns the status and the gain in rank:
+--   "family"    the ability is not for the pet's family (callers hide it)
+--   "known"     the pet already holds this rank or a higher one
+--   "learned"   the hunter learned it: it is in Beast Training, no tame needed
+--   "petLevel"  the pet is too low for the rank (callers say which level)
+--   "tooHigh"   the hunter cannot tame that beast yet, or never can
+--   "tame"      worth taming that beast for that rank
+function Planner.Verdict(ability, rankNumber, record, ctx)
+	if type(ability) ~= "table" or type(record) ~= "table" then return nil, 0 end
+	ctx = ctx or {}
+	local rank = tonumber(rankNumber) or 0
+	local have = (ctx.known or {})[ability.key] or 0
+	local gain = rank - have
+	-- No pet out: every family is worth a look, since one may be tamed later.
+	if ctx.familyId ~= nil and not Planner.FamilyHas(ability, ctx.familyId) then
+		return "family", gain
+	end
+	if have >= rank then return "known", gain end
+	if type(record.spell) == "number" and (ctx.learned or {})[record.spell] then
+		return "learned", gain
+	end
+	if (record.petLevel or 0) > (ctx.petLevel or 0) then return "petLevel", gain end
+	local beast = ctx.beast
+	if beast then
+		-- a hunter level the client did not tell is no reason to hide a beast
+		if ctx.playerLevel ~= nil and (beast.minLevel or 0) > ctx.playerLevel then
+			return "tooHigh", gain
+		end
+		if beast.tame == "N" then return "tooHigh", gain end
+	end
+	return "tame", gain
+end
+
+-- Where a fact comes from, strongest first: a tame of that beast listed the
+-- spell, the hunter saw the beast (one spot is enough), Wowhead placed it, the
+-- data source named it.
+function Planner.Source(npcId, spellID)
+	if type(npcId) ~= "number" then return nil end
+	local tamed = Discovery.Tamed and Discovery.Tamed(npcId)
+	if type(tamed) == "table" then
+		for _, spell in ipairs(tamed.ranks or {}) do
+			if spell == spellID then return "verified" end
+		end
+	end
+	local seen = Discovery.Seen and Discovery.Seen(npcId)
+	if type(seen) == "table" and type(seen.spots) == "table" and #seen.spots > 0 then
+		return "seen"
+	end
+	local beast = ns.beasts and ns.beasts[npcId]
+	if type(beast) ~= "table" then return nil end
+	-- the same two facts, gathered by the maintainer and shipped in the data
+	if beast.verified then return "verified" end
+	if beast.spotsSrc == "ingame" then return "seen" end
+	if beast.spotsSrc == "wowhead" then return "wowhead" end
+	return beast.src
+end
+
+-----------------------------------------------------------------------------
+-- The zone the hunter stands in
+-----------------------------------------------------------------------------
+
+-- which list a status goes to; "family" is missing, so it is dropped
+local HERE_GROUP = {
+	tame = "now", petLevel = "later", tooHigh = "later",
+	known = "done", learned = "done",
+}
+
+-- The level a "later" entry waits for: the pet level of the rank, or the level
+-- the hunter must reach to tame the beast, whichever comes last.
+local function WaitsFor(entry)
+	return math.max(entry.record.petLevel or 0, entry.teacher.minLevel or 0)
+end
+
+local function SortNow(a, b)
+	if a.gain ~= b.gain then return a.gain > b.gain end
+	if (a.record.petLevel or 0) ~= (b.record.petLevel or 0) then
+		return (a.record.petLevel or 0) < (b.record.petLevel or 0)
+	end
+	if (a.teacher.minLevel or 0) ~= (b.teacher.minLevel or 0) then
+		return (a.teacher.minLevel or 0) < (b.teacher.minLevel or 0)
+	end
+	if a.teacher.name ~= b.teacher.name then return a.teacher.name < b.teacher.name end
+	return (a.teacher.id or 0) < (b.teacher.id or 0)
+end
+
+local function SortLater(a, b)
+	local left, right = WaitsFor(a), WaitsFor(b)
+	if left ~= right then return left < right end
+	if a.gain ~= b.gain then return a.gain > b.gain end
+	if a.teacher.name ~= b.teacher.name then return a.teacher.name < b.teacher.name end
+	return (a.teacher.id or 0) < (b.teacher.id or 0)
+end
+
+local function SortDone(a, b)
+	local left, right = a.ability.en or "", b.ability.en or ""
+	if left ~= right then return left < right end
+	if a.rank ~= b.rank then return a.rank < b.rank end
+	return (a.teacher.id or 0) < (b.teacher.id or 0)
+end
+
+-- Everything this zone can teach the hunter's pet, one entry per (rank, beast):
+-- what to tame now, what waits for a level, what is already settled. Beasts of
+-- the zone come from Evaluate, so the data's spots, the hunter's own sightings
+-- and the zone name written in the data all count, and dungeons stay out.
+-- ctx = { mapID, familyId, petLevel, spells, learned, playerLevel, faction }.
+function Planner.Here(ctx)
+	ctx = ctx or {}
+	local here = { zoneName = nil, now = {}, later = {}, done = {} }
+	local mapID = ctx.mapID
+	if type(mapID) ~= "number" then return here end
+	local zone = ns.zones and ns.zones[mapID]
+	here.zoneName = Planner.ZoneName(mapID, type(zone) == "table" and zone.en or nil)
+
+	-- the pet's side of the verdict, computed once for every beast of the zone
+	local facts = {
+		familyId = ctx.familyId,
+		petLevel = ctx.petLevel,
+		known = Planner.Known(ctx.spells),
+		learned = ctx.learned,
+		playerLevel = ctx.playerLevel,
+	}
+	for id, beast in pairs(ns.beasts or {}) do
+		local teacher = Planner.Evaluate(id, beast, {
+			playerLevel = ctx.playerLevel,
+			faction = ctx.faction,
+			currentMap = mapID,
+			filters = { zone = true },
+		})
+		if teacher then
+			facts.beast = beast
+			for _, teach in ipairs(Planner.Teaches(id)) do
+				local status, gain = Planner.Verdict(teach.ability, teach.rank, teach.record, facts)
+				local group = status and HERE_GROUP[status]
+				if group then
+					local list = here[group]
+					list[#list + 1] = {
+						ability = teach.ability,
+						rank = teach.rank,
+						record = teach.record,
+						teacher = teacher,
+						status = status,
+						gain = gain,
+						source = Planner.Source(id, teach.record.spell),
+					}
+				end
+			end
+		end
+	end
+	table.sort(here.now, SortNow)
+	table.sort(here.later, SortLater)
+	table.sort(here.done, SortDone)
+	return here
 end
 
 Planner.BuildIndexes()
