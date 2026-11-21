@@ -28,7 +28,11 @@ L'addon reconnaît votre familier actuel, calcule les rangs de compétence qu'il
 - **Montrer sur la carte.** Ouvre la carte du monde sur la zone de la bête et pose un point à son emplacement. Le survol donne le nom et les coordonnées, un clic droit retire le point. En combat, le jeu interdit aux addons d'ouvrir la carte : appuyez sur M, elle s'ouvre sur la bonne zone.
 - **Flèche + repère.** Pose un repère dans TomTom s'il est installé, sinon avec le repère du jeu.
 - **Rangs appris.** Le message « Vous avez appris… » est enregistré par personnage. L'addon indique alors que le rang est à enseigner dans Dressage des bêtes au lieu de vous envoyer apprivoiser une bête.
-- **Apprentissage en jeu.** Quand vous ciblez ou survolez de près une bête qui enseigne un rang, l'addon retient son nom dans votre langue et l'endroit où vous l'avez vue. La position s'affiche ensuite avec la mention « Position vue par toi ».
+- **Apprentissage en jeu.** Quand vous ciblez ou survolez de près une bête qui enseigne un rang, l'addon retient son nom dans votre langue et l'endroit où vous l'avez vue. La position s'affiche ensuite avec la mention « Position vue par toi ». Quand vous apprivoisez une bête, l'addon note les rangs avec lesquels le nouveau familier arrive.
+- **Onglet Ici.** Tout ce que la zone où vous êtes peut apprendre à votre familier, dans l'ordre : à apprivoiser maintenant, quand vous aurez le niveau, déjà appris. Un clic sur une carte ouvre le rang et la bête.
+- **Infobulle des bêtes.** Le survol d'une bête qui enseigne un rang ajoute une ligne par rang : à apprivoiser, familier niv. X requis, trop haute pour toi, ou déjà appris.
+- **Alerte.** Cibler ou survoler une bête qui enseigne un rang que votre familier peut prendre maintenant affiche un petit bandeau pendant 5 secondes, une fois par bête et par session, jamais en combat. Un clic ouvre l'atlas sur ce rang. `/atlas alerts` la coupe.
+- **Sources affichées.** Chaque bête indique d'où vient son information : Vérifié (confirmé par apprivoisement), Vu en jeu, ou le site d'origine. L'onglet Ici affiche la date des données et la version de l'addon.
 - **Quatre thèmes** : Crépuscule (par défaut), Nuit, Graphite, Parchemin.
 - Bouton de minicarte (déplaçable) et entrée dans le menu des addons.
 
@@ -47,6 +51,7 @@ Sans familier sorti, la fenêtre propose de choisir une famille pour parcourir s
 | `/atlas` (ou `/adc`) | ouvre ou ferme la fenêtre |
 | `/atlas theme <nom>` | change de thème : `crepuscule`, `nuit`, `graphite`, `parchemin` |
 | `/atlas minimap` | affiche ou masque le bouton de minicarte |
+| `/atlas alerts` | active ou coupe les alertes de bêtes |
 | `/atlas help` | liste des commandes |
 
 Clic gauche sur le bouton de minicarte : ouvre la fenêtre. Clic droit : menu des thèmes.
@@ -55,7 +60,7 @@ Clic gauche sur le bouton de minicarte : ouvre la fenêtre. Clic droit : menu de
 
 L'addon n'a besoin d'aucun autre addon en jeu. TomTom est utilisé s'il est installé, sinon le repère de carte du jeu.
 
-`Data/Data.lua` contient 33 compétences, 156 rangs (tous avec leur numéro de sort), 419 bêtes qui enseignent, leurs emplacements et la faction des zones. Il est généré par un outil de construction qui n'est pas publié ici, et ne doit pas être modifié à la main.
+`Data/Data.lua` contient 33 compétences, 156 rangs (tous avec leur numéro de sort), 439 bêtes qui enseignent, leurs emplacements et la faction des zones. Il est généré par un outil de construction qui n'est pas publié ici, et ne doit pas être modifié à la main.
 
 Sources, par ordre de priorité :
 
@@ -64,6 +69,7 @@ Sources, par ordre de priorité :
 - **[Wowhead Forever](https://www.wowhead.com/forever)** : emplacements des bêtes que les deux sources précédentes ne placent pas, et vérification des rangs enseignés.
 - **[warcraft.wiki.gg](https://warcraft.wiki.gg/wiki/Zones_by_level_(original))** : territoire Alliance, Horde ou contesté de chaque zone.
 - **Polestar** (`Polestar_frFR`) : noms français des bêtes.
+- **Observations en jeu du mainteneur** : emplacements des bêtes qu'aucune source ne place, et rangs confirmés par apprivoisement. Elles comblent les trous sans jamais remplacer une source ; un désaccord est tranché à la main.
 
 Les noms et textes du jeu appartiennent à Blizzard Entertainment.
 
@@ -71,6 +77,6 @@ La fenêtre utilise la police [Inter](https://github.com/rsms/inter), sous licen
 
 ## Limites connues
 
-- 23 bêtes hors donjon n'ont pas encore d'emplacement. L'apprentissage en jeu les complète au fil des parties.
+- 36 bêtes hors donjon n'ont pas encore d'emplacement, la plupart dans les nouvelles Riverglades. L'apprentissage en jeu les complète au fil des parties.
 - La loyauté et les points de dressage du familier ne sont pas disponibles sur ce client : l'addon ne les affiche pas.
 - La position notée en jeu est la vôtre au moment où vous ciblez la bête, à moins de 28 mètres environ.
