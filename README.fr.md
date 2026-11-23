@@ -60,13 +60,13 @@ Clic gauche sur le bouton de minicarte : ouvre la fenêtre. Clic droit : menu de
 
 L'addon n'a besoin d'aucun autre addon en jeu. TomTom est utilisé s'il est installé, sinon le repère de carte du jeu.
 
-`Data/Data.lua` contient 33 compétences, 156 rangs (tous avec leur numéro de sort), 439 bêtes qui enseignent, leurs emplacements et la faction des zones. Il est généré par un outil de construction qui n'est pas publié ici, et ne doit pas être modifié à la main.
+`Data/Data.lua` contient 33 compétences, 156 rangs (tous avec leur numéro de sort), 472 bêtes qui enseignent, leurs emplacements et la faction des zones. Il est généré par un outil de construction qui n'est pas publié ici, et ne doit pas être modifié à la main.
 
 Sources, par ordre de priorité :
 
 - **[Petopia Forever](https://www.wow-petopia.com/forever/abilities.php)** : quelles bêtes enseignent quel rang, niveaux du familier, coût en points de dressage.
 - **HunterPetJournal 1.5.0** (addon) : coordonnées des bêtes, numéro de sort de chaque rang, familles et icônes.
-- **[Wowhead Forever](https://www.wowhead.com/forever)** : emplacements des bêtes que les deux sources précédentes ne placent pas, et vérification des rangs enseignés.
+- **[Wowhead Forever](https://www.wowhead.com/forever)** : emplacements des bêtes que les deux sources précédentes ne placent pas, vérification des rangs enseignés, et le [catalogue hunter-pets](https://www.wowhead.com/forever/hunter-pets) qu'il publie (bêtes, niveaux, rangs, points d'apparition) pour les zones que HunterPetJournal ne couvre pas.
 - **[warcraft.wiki.gg](https://warcraft.wiki.gg/wiki/Zones_by_level_(original))** : territoire Alliance, Horde ou contesté de chaque zone.
 - **Polestar** (`Polestar_frFR`) : noms français des bêtes.
 - **Observations en jeu du mainteneur** : emplacements des bêtes qu'aucune source ne place, et rangs confirmés par apprivoisement. Elles comblent les trous sans jamais remplacer une source ; un désaccord est tranché à la main.
@@ -77,6 +77,6 @@ La fenêtre utilise la police [Inter](https://github.com/rsms/inter), sous licen
 
 ## Limites connues
 
-- 36 bêtes hors donjon n'ont pas encore d'emplacement, la plupart dans les nouvelles Riverglades. L'apprentissage en jeu les complète au fil des parties.
+- 10 bêtes n'ont pas encore d'emplacement : des PNJ propres à Forever qu'aucune source ne place (Forest Stalker, Mud Crawler, Noxious Reaver et Shredder, Vilebranch Wolf, Murderous Bonepaw, Rabid Shrike Bat, Rabid Snickerfang, Scorpok Snapper et Lasher). L'apprentissage en jeu les complète au fil des parties.
 - La loyauté et les points de dressage du familier ne sont pas disponibles sur ce client : l'addon ne les affiche pas.
 - La position notée en jeu est la vôtre au moment où vous ciblez la bête, à moins de 28 mètres environ.
