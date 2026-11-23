@@ -2,6 +2,26 @@
 
 Newest first. *Version française sous chaque version.*
 
+## 0.2.1 - 2026-11-23
+
+### Data
+
+- Database update: 472 teaching beasts (+33) and 569 teacher links (+47).
+- Two new zones, Mount Hyjal and Shen'dralas, with the beasts that live there.
+- 19 beasts are now placed in every zone they live in, not only the first one.
+- Ranks that had no teacher now have one, from Web 4 and Sonic Blast 4 to Swipe 3, Tendon Rip 5, Mine! 4, Savage Rend 5 and Pinch 3-4.
+- Two families corrected: Vulgara the Insatiable is a Fox, Shriekling Fledgling a Bird of Prey.
+- 10 beasts still have no location: Forever-only NPCs that no source places.
+
+### Français
+
+- **Données** : mise à jour de la base, 472 bêtes qui enseignent (+33) et 569 liens (+47).
+- Deux nouvelles zones, le Mont Hyjal et Shen'dralas, avec les bêtes qui y vivent.
+- 19 bêtes sont désormais placées dans toutes leurs zones, pas seulement la première.
+- Des rangs qui n'avaient aucun maître en ont un (Web 4, Sonic Blast 4, Swipe 3, Tendon Rip 5, Mine! 4, Savage Rend 5, Pinch 3 et 4).
+- Deux familles corrigées : Vulgara l'Insatiable est un Renard, Jeune criailleuse un Oiseau de proie.
+- 10 bêtes n'ont toujours pas d'emplacement : des PNJ propres à Forever qu'aucune source ne place.
+
 ## 0.2.0 - 2026-11-21
 
 ### Added

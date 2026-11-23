@@ -4,7 +4,7 @@
 ## Notes: Finds the beasts that teach the ability rank your pet needs: faction, level, zone and dungeon filters, point on the map.
 ## Notes-frFR: Trouve les bêtes qui enseignent le rang de compétence dont ton familier a besoin : filtres par faction, niveau, zone et donjons, repère sur la carte.
 ## Author: VDRomain
-## Version: 0.2.0
+## Version: 0.2.1
 ## SavedVariables: AtlasDeChasseDB
 ## SavedVariablesPerCharacter: AtlasDeChasseCharDB
 ## IconTexture: Interface\Icons\Ability_Hunter_BeastTaming
