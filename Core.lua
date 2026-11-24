@@ -28,7 +28,8 @@ local EVENTS = {
 
 -- What the window shows: the pet, the plan, the chosen rank, its teachers.
 local state = {
-	filters = { tameable = true, faction = true, zone = false, dungeons = false },
+	-- Every beast shows at first: the hunter narrows the list, never wonders why it is short.
+	filters = { tameable = false, faction = false, zone = false, dungeons = false },
 }
 ns.state = state
 
@@ -122,9 +123,11 @@ local function FindInPlan(plan, abilityKey, rank)
 	return nil
 end
 
+-- The rank on show: the planner's own (entry.rank) unless the hunter picked
+-- another one of the same ability in the rank strip (state.viewRank).
 local function RecomputeRank()
 	local entry = state.selection
-	local rankRecord = entry and ns.Planner.RankAt(entry.ability, entry.rank) or nil
+	local rankRecord = entry and ns.Planner.RankAt(entry.ability, state.viewRank or entry.rank) or nil
 	state.rank = rankRecord
 	local learned = state.learnedTable or {}
 	state.learned = rankRecord ~= nil and rankRecord.spell ~= nil and learned[rankRecord.spell] ~= nil
@@ -159,10 +162,22 @@ function ns.Refresh()
 		petLevel = pet.exists and pet.level or nil,
 		spells = pet.spells,
 	})
-	local kept = state.selection and FindInPlan(state.plan, state.selection.ability.key, state.selection.rank)
+	local previous = state.selection
+	local kept = previous and FindInPlan(state.plan, previous.ability.key, previous.rank)
+	-- The pet learned the rank: stay on the same ability, now at its next rank.
+	if not kept and previous then
+		for _, groupKey in ipairs(GROUP_ORDER) do
+			for _, candidate in ipairs(state.plan[groupKey] or {}) do
+				if candidate.ability.key == previous.ability.key then kept = candidate break end
+			end
+			if kept then break end
+		end
+	end
 	if not kept then
 		kept = state.plan.now[1] or state.plan.later[1] or state.plan.trainer[1] or state.plan.maxed[1]
 	end
+	-- A rank picked in the strip stays on show while the ability does.
+	if not (kept and previous and kept.ability.key == previous.ability.key) then state.viewRank = nil end
 	state.selection = kept
 	RecomputeRank()
 	if ns.ui and ns.ui.Render then ns.ui.Render() end
@@ -171,6 +186,19 @@ end
 function ns.SelectPlanEntry(entry)
 	if not entry then return end
 	state.selection = entry
+	state.viewRank = nil
+	state.beastId = nil
+	state.beast = nil
+	RecomputeRank()
+	if ns.ui and ns.ui.Render then ns.ui.Render() end
+end
+
+-- A pill of the rank strip: another rank of the selected ability, or back to
+-- the planner's own when it is that one.
+function ns.ViewRank(rank)
+	local entry = state.selection
+	if not (entry and rank and ns.Planner.RankAt(entry.ability, rank)) then return end
+	state.viewRank = rank ~= entry.rank and rank or nil
 	state.beastId = nil
 	state.beast = nil
 	RecomputeRank()
@@ -215,6 +243,8 @@ function ns.FocusRank(abilityKey, rank, npcId)
 	end
 	if entry then
 		state.selection = entry
+		-- a rank the pet already knows now shows as itself, not as the next one
+		state.viewRank = rank and rank ~= entry.rank and ns.Planner.RankAt(entry.ability, rank) and rank or nil
 		state.beast, state.beastId = nil, nil
 		RecomputeRank()
 		if ns.ui and ns.ui.Render then ns.ui.Render() end
@@ -227,6 +257,7 @@ function ns.BrowseFamily(familyId)
 	if type(familyId) ~= "number" then return end
 	state.browseFamily = familyId
 	state.selection = nil
+	state.viewRank = nil
 	state.beast, state.beastId = nil, nil
 	ns.Refresh()
 end

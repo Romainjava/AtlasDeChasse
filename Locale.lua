@@ -44,6 +44,11 @@ local FRENCH = {
 	["Already learned — teach it in Beast Training"] =
 		"Déjà appris — à enseigner dans Dressage des bêtes",
 	["learned"] = "appris",
+	["Ranks"] = "Rangs",
+	["Your pet knows it"] = "Ton familier le connaît",
+	["Already learned"] = "Déjà appris",
+	["Next rank for your pet"] = "Prochain rang de ton familier",
+	["Pet level %d needed"] = "Familier niv. %d requis",
 
 	--- Filters ----------------------------------------------------------
 	["Tameable at your level"] = "Apprivoisable à ton niveau",

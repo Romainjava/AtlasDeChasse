@@ -23,6 +23,7 @@ The addon shows English on every client except French ones, which get French (an
   - **Can learn now**: ranks your pet can learn at its current level.
   - **Later**: ranks that need a higher level, with the level required.
   - **Pet trainer**: ranks sold by the pet trainer, such as Growl, Great Stamina, Natural Armor or the resistances.
+- **Rank strip.** Under the title, every rank of the chosen ability, the rank on show filled. Click a rank to list the beasts that teach that one; the colours say known, next, or too low a pet level. Hover for the pet level, the training points and the effect.
 - **The beasts that teach a rank.** Name, level (red when the beast is above your level), zone and coordinates.
 - **Filters.**
   - **Tameable at your level**: beasts you can tame right now.

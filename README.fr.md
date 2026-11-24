@@ -19,6 +19,7 @@ L'addon reconnaît votre familier actuel, calcule les rangs de compétence qu'il
   - **Peut apprendre maintenant** : rangs que votre familier peut apprendre à son niveau actuel.
   - **Plus tard** : rangs qui demandent un niveau plus élevé, avec le niveau requis.
   - **Dresseur de familiers** : rangs vendus par le dresseur, comme Grondement, Endurance supérieure, Armure naturelle ou les résistances.
+- **Bande de rangs.** Sous le titre, tous les rangs de la compétence choisie, le rang affiché rempli. Un clic sur un rang liste les bêtes qui enseignent celui-là ; les couleurs disent connu, prochain, ou niveau de familier trop bas. Le survol donne le niveau du familier, les points de dressage et l'effet.
 - **Les bêtes qui enseignent un rang.** Nom (en français quand il est connu), niveau (en rouge si la bête est au-dessus de votre niveau), zone et coordonnées.
 - **Filtres.**
   - **Apprivoisable à ton niveau** : bêtes que vous pouvez apprivoiser maintenant.

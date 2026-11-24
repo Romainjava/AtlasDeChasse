@@ -12,10 +12,14 @@ ns.ui = UI
 -- Measurements (the mock is 880x512)
 -----------------------------------------------------------------------------
 
-local W, H = 880, 512
+local W, H = 880, 546
 local SIDEBAR_W = 230
 local CARD_H = 68
-local HEADER_H = 62
+-- The header holds the title, the strip of every rank, then the rank's line.
+local HEADER_H = 96
+local RANK_PILL_W, RANK_PILL_H = 26, 20
+-- Great Stamina and Natural Armor have ten ranks, the most of any ability.
+local RANK_PILLS_MAX = 12
 local TAB_H = 33
 local CHIPS_H = 36
 local CHIP_H = 22
@@ -127,6 +131,7 @@ local beastRows = {}
 local chips = {}
 local petPortrait, petName, petStats, familyButton, emptyPetText, familyMenu, familyMenuRows
 local headerGradient, titleName, titleRank, subtitle, learnedBadge
+local rankStrip, rankPills = nil, {}
 local gearButton, closeButton
 local headName, headLevel, headZone
 local scroll, scrollChild, scrollOffset, tableEmpty
@@ -148,6 +153,8 @@ local tabs = {}
 local secretList, secretBody, secretRows, secretSelected
 local secretName, secretTitle, secretZone, secretSteps, secretAbilities, secretSource
 local secretMap, secretPills, secretButtons = nil, {}, {}
+-- The place the hidden pet page points at: the item to fetch or the pet itself.
+local secretPlaceChips, secretPlaceKey, secretPlaceFor = {}, nil, nil
 local SECRET_STEPS_MAX = 6
 local SECRET_PANEL_W = 224
 
@@ -242,6 +249,47 @@ local function AbilityName(ability)
 	if not ability then return "" end
 	return ability.localName or ability.en or "?"
 end
+
+-- Where one rank of the selected ability stands for this pet, strongest first:
+-- the pet has it, the hunter learned it, it is the next one, the pet is too
+-- low for it, or it simply comes later.
+local function RankStatus(rank)
+	local state = ns.state or {}
+	local entry = state.selection
+	if not entry then return nil end
+	if rank <= (entry.known or 0) then return "known" end
+	local record = ns.Planner.RankAt(entry.ability, rank)
+	if record and record.spell and state.learnedTable and state.learnedTable[record.spell] then
+		return "learned"
+	end
+	if state.browsing then return "later" end
+	if rank == entry.rank then return "next" end
+	local petLevel = state.pet and state.pet.level
+	if petLevel and record and record.petLevel and record.petLevel > petLevel then return "level" end
+	return "later"
+end
+
+-- The words that go with a status, for the strip and the pill tooltip.
+local function RankStatusText(rank)
+	local status = RankStatus(rank)
+	if status == "known" then return L["Your pet knows it"] end
+	if status == "learned" then return L["Already learned"] end
+	if status == "next" then return L["Next rank for your pet"] end
+	if status == "level" then
+		local record = ns.Planner.RankAt(ns.state.selection.ability, rank)
+		return L["Pet level %d needed"]:format(record.petLevel)
+	end
+	return ""
+end
+
+-- The strip's colours: the rank on show is filled, the others say their status.
+local RANK_COLORS = {
+	known = { pill = "ok", alpha = 0.16, text = "ok" },
+	learned = { pill = "ok", alpha = 0.16, text = "ok" },
+	next = { pill = "accent", alpha = 0.18, text = "accent" },
+	level = { pill = "alt", text = "muted" },
+	later = { pill = "alt", text = "dim" },
+}
 
 -- A pill with a centred label: the building block of the source and count
 -- pills. Paint gives it its colour, so a theme switch repaints it.
@@ -473,6 +521,35 @@ local function BuildMain()
 	titleRank = PaintedText(header, "title", "accent")
 	titleRank:SetPoint("LEFT", titleName, "RIGHT", 7, 0)
 	titleRank:SetJustifyH("LEFT")
+	-- Every rank of the ability, so the hunter can look ahead or back. The
+	-- planner's rank shows first; any other is one click away.
+	rankStrip = CreateFrame("Frame", nil, header)
+	rankStrip:SetHeight(RANK_PILL_H)
+	rankStrip:SetPoint("TOPLEFT", titleName, "BOTTOMLEFT", 0, -8)
+	rankStrip:SetPoint("RIGHT", header, "RIGHT", -16, 0)
+	rankStrip.label = PaintedText(rankStrip, "label", "muted")
+	rankStrip.label:SetPoint("LEFT", 0, 0)
+	rankStrip.label:SetText(L["Ranks"])
+	rankStrip.status = rankStrip:CreateFontString(nil, "ARTWORK", Font("small"))
+	rankStrip.status:SetJustifyH("LEFT")
+	for index = 1, RANK_PILLS_MAX do
+		local pill = CreateFrame("Button", nil, rankStrip)
+		pill:SetSize(RANK_PILL_W, RANK_PILL_H)
+		pill.pill = Pill(pill, "BACKGROUND")
+		pill.hover = Pill(pill, "HIGHLIGHT")
+		pill.label = pill:CreateFontString(nil, "ARTWORK", Font("label"))
+		pill.label:SetPoint("CENTER", 0, 0)
+		pill:SetScript("OnClick", function(self)
+			if self.rank and ns.ViewRank then ns.ViewRank(self.rank) end
+		end)
+		pill:SetScript("OnEnter", function(self) UI.RankPillTooltip(self) end)
+		pill:SetScript("OnLeave", function()
+			if GameTooltip then GameTooltip:Hide() end
+		end)
+		pill:Hide()
+		rankPills[index] = pill
+	end
+
 	subtitle = PaintedText(header, "small", "dim")
 	subtitle:SetPoint("TOPLEFT", titleName, "BOTTOMLEFT", 0, -6)
 	subtitle:SetJustifyH("LEFT")
@@ -836,7 +913,26 @@ local function BuildSecrets()
 	separator:SetPoint("TOPLEFT", panel, "TOPLEFT")
 	separator:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT")
 	separator:SetWidth(1)
+	-- Two chips over the map when the pet has an item to fetch first: where the
+	-- item lies, where the pet appears. The map and both buttons follow the chip.
+	local chipW = math.floor((MAP_W - 6) / 2)
+	for index = 1, 2 do
+		local chip = CreateFrame("Button", nil, secretBody)
+		chip:SetSize(chipW, CHIP_H)
+		chip.pill = Pill(chip, "BACKGROUND")
+		chip.hover = Pill(chip, "HIGHLIGHT")
+		chip.label = chip:CreateFontString(nil, "ARTWORK", Font("label"))
+		chip.label:SetPoint("CENTER")
+		chip:SetPoint("TOPLEFT", panel, "TOPLEFT", 12 + (index - 1) * (chipW + 6), -12)
+		chip:SetScript("OnClick", function(self)
+			secretPlaceKey = self.key
+			UI.RenderSecrets()
+		end)
+		chip:Hide()
+		secretPlaceChips[index] = chip
+	end
 	secretMap = NewMiniMap(secretBody)
+	secretMap.panel = panel
 	secretMap.frame:SetPoint("TOPLEFT", panel, "TOPLEFT", 12, -12)
 	local knows = PaintedText(secretBody, "label", "muted")
 	knows:SetPoint("TOPLEFT", secretMap.frame, "BOTTOMLEFT", 0, -12)
@@ -1064,6 +1160,23 @@ function UI.Paint()
 	for _, button in ipairs({ waypointButton, mapButton, familyButton }) do
 		PaintPillButton(button)
 	end
+
+	-- Rank strip: the rank on show is filled with the accent colour.
+	for _, pill in ipairs(rankPills) do
+		if pill.rank then
+			local colors = RANK_COLORS[RankStatus(pill.rank) or "later"]
+			if pill.viewed then
+				SetPillColor(pill.pill, "accent")
+				SetTextColor(pill.label, "onAccent")
+			else
+				SetPillColor(pill.pill, colors.pill, colors.alpha)
+				SetTextColor(pill.label, colors.text)
+			end
+			SetPillColor(pill.hover, "text", 0.08)
+		end
+	end
+	local statusColors = RANK_COLORS[rankStrip.viewedStatus] or RANK_COLORS.later
+	SetTextColor(rankStrip.status, statusColors.text)
 	SetPillColor(gearButton.hover, "text", 0.08)
 	SetPillColor(closeButton.hover, "text", 0.08)
 
@@ -1081,7 +1194,7 @@ function UI.Paint()
 			end
 			if entry then
 				SetTextColor(row.text, selected and "text" or "dim")
-				local learned = ns.state and ns.state.learned and entry == selection
+				local learned = ns.state and ns.state.learned and not ns.state.viewRank and entry == selection
 				if learned then
 					SetTextColor(row.suffix, "ok")
 				elseif group.key == "now" then
@@ -1132,6 +1245,12 @@ function UI.Paint()
 		SetTextColor(pill.label, pill.met and "ok" or "danger")
 	end
 	for _, button in ipairs(secretButtons) do PaintPillButton(button) end
+	for _, chip in ipairs(secretPlaceChips) do
+		local active = chip.key ~= nil and chip.key == secretPlaceKey
+		SetPillColor(chip.pill, active and "accent" or "alt")
+		SetPillColor(chip.hover, "text", 0.08)
+		SetTextColor(chip.label, active and "onAccent" or "dim")
+	end
 
 	-- Here page: a settled card reads muted, a waiting one dim, and a level the
 	-- hunter cannot tame yet is red. The source pills carry their own token.
@@ -1276,6 +1395,57 @@ local function SuffixOf(entry, learned)
 	return tostring(entry.rank)
 end
 
+-- Lays out one pill per rank of the selected ability and the status of the
+-- rank on show; the line under the title moves below the strip while it shows.
+function UI.RenderRankStrip(shown)
+	local state = ns.state or {}
+	local entry = state.selection
+	local numbers = shown and ns.Planner.RankNumbers(entry.ability) or {}
+	shown = shown and #numbers > 0
+	rankStrip:SetShown(shown)
+	local below = shown and rankStrip or titleName
+	if subtitle.anchor ~= below then
+		subtitle.anchor = below
+		subtitle:ClearAllPoints()
+		subtitle:SetPoint("TOPLEFT", below, "BOTTOMLEFT", 0, shown and -7 or -6)
+	end
+	if not shown then return end
+
+	local viewed = state.rank and state.rank.rank or entry.rank
+	local x = math.floor((rankStrip.label:GetStringWidth() or 0) + 10)
+	local last
+	for index, pill in ipairs(rankPills) do
+		local rank = numbers[index]
+		pill.rank = rank
+		pill.viewed = rank ~= nil and rank == viewed
+		pill:SetShown(rank ~= nil)
+		if rank then
+			pill.label:SetText(tostring(rank))
+			pill:ClearAllPoints()
+			pill:SetPoint("LEFT", rankStrip, "LEFT", x, 0)
+			x = x + RANK_PILL_W + 4
+			last = pill
+		end
+	end
+	rankStrip.status:ClearAllPoints()
+	rankStrip.status:SetPoint("LEFT", last, "RIGHT", 10, 0)
+	rankStrip.status:SetText(RankStatusText(viewed))
+	rankStrip.viewedStatus = RankStatus(viewed)
+end
+
+function UI.RankPillTooltip(pill)
+	local entry = ns.state and ns.state.selection
+	if not (GameTooltip and pill.rank and entry) then return end
+	GameTooltip:SetOwner(pill, "ANCHOR_BOTTOM")
+	GameTooltip:AddLine(AbilityName(entry.ability) .. " " .. L["rank %s"]:format(pill.rank))
+	local record = ns.Planner.RankAt(entry.ability, pill.rank)
+	local line = RankSubtitle(record)
+	if line ~= "" then GameTooltip:AddLine(line, 1, 1, 1, true) end
+	local status = RankStatusText(pill.rank)
+	if status ~= "" then GameTooltip:AddLine(status, 0.6, 0.85, 0.6) end
+	GameTooltip:Show()
+end
+
 function UI.Render()
 	if not frame then return end
 	local state = ns.state or {}
@@ -1317,7 +1487,8 @@ function UI.Render()
 			row.entry = entry
 			row:SetShown(entry ~= nil)
 			if entry then
-				local learned = entry == state.selection and state.learned and true or false
+				-- the badge speaks for the rank on show, which may not be the row's
+				local learned = entry == state.selection and state.learned and not state.viewRank and true or false
 				row.icon:SetTexture(entry.ability.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
 				row.text:SetText(AbilityName(entry.ability))
 				row.suffix:SetText(SuffixOf(entry, learned))
@@ -1342,6 +1513,8 @@ function UI.Render()
 			subtitle:SetText(L["No pet out — bring out your pet to see what it can learn."])
 		end
 	end
+
+	UI.RenderRankStrip(view == "abilities" and ability and rankRecord and true or false)
 
 	learnedBadge:SetText(state.learned and L["Already learned — teach it in Beast Training"] or "")
 	learnedBadge:SetShown(state.learned and true or false)
@@ -1452,13 +1625,46 @@ local function SecretAbilityName(ability)
 	return name
 end
 
+-- The places a hidden pet page can point at, in the order the hunter goes:
+-- where the item lies (when the data knows it), then where the pet appears.
+local function SecretPlaces(secret)
+	local places = {}
+	if secret and secret.itemSpot and secret.item then
+		places[#places + 1] = { key = "item", spot = secret.itemSpot, name = ItemName(secret.item) }
+	end
+	if secret and secret.spot then
+		places[#places + 1] = { key = "pet", spot = secret.spot, name = Pick(secret.name) or "?" }
+	end
+	return places
+end
+
+-- The place on show. A new pet opens on the item while the bags lack it, on
+-- the pet once they hold enough; a chip click picks either.
+local function SecretPlace(secret)
+	local places = SecretPlaces(secret)
+	if #places == 0 then return nil, places end
+	if secretPlaceFor ~= secret then
+		secretPlaceFor = secret
+		local item = secret.item
+		local enough = item and (ItemCount(item.id) or 0) >= (item.count or 1)
+		secretPlaceKey = (places[1].key == "item" and not enough) and "item" or "pet"
+	end
+	for _, place in ipairs(places) do
+		if place.key == secretPlaceKey then return place, places end
+	end
+	secretPlaceKey = places[1].key
+	return places[1], places
+end
+
 -- The point the map buttons take: { map, x, y, name, zoneName }.
 function UI.SecretTarget(secret)
-	if not (secret and secret.spot) then return nil end
+	local place = SecretPlace(secret)
+	if not place then return nil end
+	local spot = place.spot
 	return {
-		map = secret.spot.map, x = secret.spot.x, y = secret.spot.y,
-		name = Pick(secret.name) or "?",
-		zoneName = ns.Planner.ZoneName(secret.spot.map, secret.zoneEn),
+		map = spot.map, x = spot.x, y = spot.y,
+		name = place.name,
+		zoneName = ns.Planner.ZoneName(spot.map, secret.zoneEn),
 	}
 end
 
@@ -1533,6 +1739,20 @@ function UI.RenderSecrets()
 	secretAbilities:SetText(table.concat(names, "\n"))
 	secretSource:SetText(secret and secret.source and L["Source: %s"]:format(secret.source) or "")
 	for _, button in ipairs(secretButtons) do button:SetShown(target ~= nil) end
+
+	-- The place chips show only when there is a choice; the map sits under them.
+	local _, places = SecretPlace(secret)
+	local choice = #places > 1
+	for index, chip in ipairs(secretPlaceChips) do
+		local place = choice and places[index] or nil
+		chip.key = place and place.key or nil
+		chip:SetShown(place ~= nil)
+		if place then
+			chip.label:SetText(Pick(place.spot.label) or place.name)
+		end
+	end
+	secretMap.frame:ClearAllPoints()
+	secretMap.frame:SetPoint("TOPLEFT", secretMap.panel, "TOPLEFT", 12, choice and -(12 + CHIP_H + 8) or -12)
 	ShowMiniMap(secretMap, target)
 	UI.Paint()
 end
