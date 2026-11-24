@@ -5,7 +5,9 @@
 --
 --   item    = { id, count, en, fr }: the item the hunter must carry (count to bring)
 --   steps   = { en, fr } lines, in order; %ITEM% is replaced by the item's name
+--   level   = the hunter level to come at (the beast's highest level, so it can always be tamed)
 --   spot    = where the beast appears: { map = uiMapID, x, y } in 0-100
+--   itemSpot = where the item lies, same shape; label on either names it on the page's chips
 --   abilities = { spell, rank, en, fr } it teaches; rank is appended to the
 --               client's name when the name carries none
 local _, ns = ...
@@ -17,14 +19,21 @@ ns.secrets = {
     -- the English title is not known yet: no line on English clients
     title = { fr = "Expérience fugitive" },
     family = 2, -- Cat
-    level = 57,
+    -- Ta'shkal appears at level 57 or 58: at 58 the hunter can tame either.
+    level = 58,
     zoneEn = "Mount Hyjal",
-    spot = { map = 2482, x = 26.6, y = 64.9 },
+    spot = { map = 2482, x = 26.6, y = 64.9, label = { en = "Lantern", fr = "Lanterne" } },
+    -- the middle of the 13 spawn points Wowhead lists for the figurine (object 660432)
+    itemSpot = { map = 2482, x = 45.5, y = 78.5, label = { en = "Figurine", fr = "Figurine" } },
     item = { id = 276909, count = 2, en = "Corrupted Cat Figurine", fr = "Figurine de chat corrompue" },
     steps = {
       {
-        en = "Find a %ITEM% in the fel pools of Mount Hyjal (French guide: « Balafre Gangresang »). It has no fixed spot: search the tainted water. Bring 2: the lantern can use one up without the cat showing.",
-        fr = "Trouve une %ITEM% dans les bassins gangrenés de Balafre Gangresang. Pas de point fixe : fouille l'eau gangrenée. Prends-en 2 : la lanterne peut en consommer une sans que le félin apparaisse.",
+        en = "Come at level 58: Ta'shkal appears at level 57 or 58, and at 57 you may not be able to tame it.",
+        fr = "Viens niveau 58 : Ta'shkal apparaît niveau 57 ou 58, et au niveau 57 tu risques de ne pas pouvoir le dompter.",
+      },
+      {
+        en = "Pick up a %ITEM% in the fel pools of southern Mount Hyjal, around 45.5 78.5 (Figurine on the map). Bring 2: the lantern sometimes uses one up without the cat showing.",
+        fr = "Ramasse une %ITEM% dans les bassins gangrenés de Balafre Gangresang, vers 45,5 78,5 (Figurine sur la carte). Prends-en 2 : la lanterne en consomme parfois une sans que le félin apparaisse.",
       },
       {
         en = "Leave your current pet at the stable.",
@@ -44,6 +53,6 @@ ns.secrets = {
       { spell = 24453, rank = 3, en = "Prowl", fr = "Rôder" },
       { spell = 1263110, en = "Faster Attack VII", fr = "Attaque rapide VII" },
     },
-    source = "Mamytwink / Petopia (Zsawylde), 2026-11-18",
+    source = "Mamytwink / Petopia (Zsawylde), Wowhead (figurine), 2026-11-24",
   },
 }
