@@ -2,6 +2,37 @@
 
 Newest first. *Version française sous chaque version.*
 
+## 0.2.2 - 2026-11-24
+
+### Added
+
+- **Rank strip**: under the window title, every rank of the chosen ability (`Ranks 1 2 3 4 [5] 6 7 8`), with the rank on show filled. Click a rank to look at it: the list shows the beasts that teach that rank. The colours say where your pet stands: known, next, or too low a pet level. Hover a pill for the pet level, the training points and the effect.
+- **Hidden pets, two places**: on the Ta'shkal page, two chips over the map switch between where the figurine lies and where the cat appears; the map and both map buttons follow the chip. The page opens on the figurine while the bags hold fewer than needed.
+
+### Changed
+
+- **Every beast at first**: the filters start off, so the first list is every teacher of the rank. You narrow it down, and never wonder why it is short.
+- **Taller window**: 34 pixels more, for the rank strip.
+
+### Data
+
+- Ta'shkal (Mount Hyjal, hidden cat): the Corrupted Cat Figurine lies at 45.5 78.5 in the fel pools, the page says to come at level 58, and the steps are rewritten around it.
+
+### Fixed
+
+- After the pet learns a rank, the window stays on the same ability (it used to jump to the first ability of the list).
+- A card of the Here tab that points at a rank the pet already knows now opens that exact rank.
+
+### Français
+
+- **Bande de rangs** : sous le titre, tous les rangs de la compétence choisie (`Rangs 1 2 3 4 [5] 6 7 8`), le rang affiché rempli. Un clic sur un rang l'affiche : la liste montre les bêtes qui enseignent ce rang. Les couleurs disent où en est le familier : connu, prochain, ou niveau de familier trop bas. Le survol d'une pastille donne le niveau du familier, les points de dressage et l'effet.
+- **Bêtes cachées, deux lieux** : sur la page de Ta'shkal, deux pastilles au-dessus de la carte basculent entre l'endroit de la figurine et celui où le félin apparaît ; la carte et les deux boutons de carte suivent la pastille. La page s'ouvre sur la figurine tant que les sacs en portent moins qu'il n'en faut.
+- **Toutes les bêtes au départ** : les filtres sont coupés au lancement, la première liste montre donc tous les maîtres du rang. On la resserre, et on ne se demande plus pourquoi elle est courte.
+- **Fenêtre plus haute** : 34 pixels de plus, pour la bande de rangs.
+- **Données** : Ta'shkal (Mont Hyjal, félin caché), la Figurine de chat corrompue se trouve à 45,5 78,5 dans les bassins gangrenés, la page conseille de venir au niveau 58, et les étapes sont réécrites autour d'elle.
+- **Corrigé** : après l'apprentissage d'un rang par le familier, la fenêtre reste sur la même compétence (elle sautait avant à la première compétence de la liste).
+- **Corrigé** : une carte de l'onglet Ici qui pointe un rang que le familier connaît déjà ouvre maintenant ce rang exact.
+
 ## 0.2.1 - 2026-11-23
 
 ### Data
