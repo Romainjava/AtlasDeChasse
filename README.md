@@ -6,7 +6,7 @@ A hunter pet-training atlas for World of Warcraft: Forever 1.60.1 (`## Interface
 
 The addon recognizes your current pet, works out which ability ranks it can learn now or later, and lists every beast that teaches the chosen rank, with its level, zone and a point on the map.
 
-The addon shows English on every client except French ones, which get French (and the name "Atlas de chasse").
+The addon speaks English, French, German and Spanish: a frFR client gets French (and the name "Atlas de chasse"), a deDE one German ("Jägeratlas"), esES and esMX Spanish ("Atlas del cazador"), and every other client English.
 
 ![The window in the Twilight theme: the pet's ranks on the left, the beasts that teach the chosen rank, and the beast's spot on the zone map](docs/window-twilight.jpg)
 

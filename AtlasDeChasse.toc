@@ -1,10 +1,16 @@
 ## Interface: 16001
 ## Title: Hunter's Atlas
 ## Title-frFR: Atlas de chasse
+## Title-deDE: Jägeratlas
+## Title-esES: Atlas del cazador
+## Title-esMX: Atlas del cazador
 ## Notes: Finds the beasts that teach the ability rank your pet needs: faction, level, zone and dungeon filters, point on the map.
 ## Notes-frFR: Trouve les bêtes qui enseignent le rang de compétence dont ton familier a besoin : filtres par faction, niveau, zone et donjons, repère sur la carte.
+## Notes-deDE: Findet die Wildtiere, die den Rang der Fähigkeit lehren, den dein Begleiter braucht: Filter nach Fraktion, Stufe, Zone und Dungeon, Markierung auf der Karte.
+## Notes-esES: Encuentra las bestias que enseñan el rango de habilidad que necesita tu mascota: filtros por facción, nivel, zona y mazmorras, marca en el mapa.
+## Notes-esMX: Encuentra las bestias que enseñan el rango de habilidad que necesita tu mascota: filtros por facción, nivel, zona y mazmorras, marca en el mapa.
 ## Author: VDRomain
-## Version: 0.2.2
+## Version: 0.3.0
 ## SavedVariables: AtlasDeChasseDB
 ## SavedVariablesPerCharacter: AtlasDeChasseCharDB
 ## IconTexture: Interface\Icons\Ability_Hunter_BeastTaming

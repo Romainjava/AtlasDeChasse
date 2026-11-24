@@ -2,6 +2,69 @@
 
 Newest first. *Version française sous chaque version.*
 
+## 0.3.0 - 2026-11-24
+
+### Added
+
+- **German and Spanish**: the window, the tooltips, the beast alert, the Here tab, the hidden-pet page and the slash commands now speak German on a deDE client and Spanish on esES and esMX clients. Every other client still gets English, and a French one French. On a German client the addon is named Jägeratlas, on a Spanish one Atlas del cazador.
+- **Names in German and Spanish**: of the 472 teaching beasts, 399 carry a German name, 383 a Spanish one and 374 a Mexican-Spanish one, the rest keeping their English name; the families, the zone labels and the items of the hidden pets follow the same rule.
+- **A name per language**: a beast the addon notes while you play keeps the name of the client it was seen on, so a name learned in French never shows on a German client, and the other way round.
+
+### Changed
+
+- **Coordinates** print with a comma on a French, German or Spanish client (`67,4`), and still with a dot in English.
+- **Dates** follow the client's order: dd.mm.yyyy in German, dd/mm/yyyy in French and Spanish, the data file's own yyyy-mm-dd in English.
+- **Damage ranges** in the rank tooltip are translated: "7-9 dégâts", "7–9 Schaden", "7-9 de daño".
+- **Wider subtitle**: the line under the title now spans the whole header, so a rank description stays on one line instead of running into the tabs.
+- **Chat colon**: a space before the colon stays a French habit; German and Spanish print the prefix without it.
+
+### Data
+
+- Database update: the German and Spanish names of the beasts, checked against the terms the game itself uses.
+- Ta'shkal (Mount Hyjal): the hidden-pet page is in German and Spanish too, title, steps, item and both map labels included.
+
+### Français
+
+- **Allemand et espagnol** : la fenêtre, les infobulles, l'alerte de bête, l'onglet Ici, la page des bêtes cachées et les commandes parlent désormais allemand sur un client deDE et espagnol sur esES et esMX. Tous les autres clients gardent l'anglais, et un client français le français. Sur un client allemand l'addon s'appelle Jägeratlas, sur un client espagnol Atlas del cazador.
+- **Noms en allemand et en espagnol** : sur les 472 bêtes qui enseignent, 399 ont un nom allemand, 383 un nom espagnol et 374 un nom mexicain-espagnol, les autres gardent leur nom anglais ; les familles, les libellés de zone et les objets des bêtes cachées suivent la même règle.
+- **Un nom par langue** : une bête notée en jeu garde le nom du client où elle a été vue, un nom appris en français ne s'affiche donc jamais sur un client allemand, et inversement.
+- **Coordonnées** : avec une virgule sur un client français, allemand ou espagnol (`67,4`), toujours avec un point en anglais.
+- **Dates** : dans l'ordre du client, jj.mm.aaaa en allemand, jj/mm/aaaa en français et en espagnol, aaaa-mm-jj en anglais comme dans le fichier de données.
+- **Dégâts des rangs** : dans l'infobulle, « 7-9 dégâts », « 7–9 Schaden », « 7-9 de daño ».
+- **Sous-titre plus large** : la ligne sous le titre occupe toute la largeur de l'en-tête, une description de rang tient donc sur une ligne au lieu de déborder sur les onglets.
+- **Deux-points du chat** : l'espace avant les deux-points reste une habitude française ; l'allemand et l'espagnol écrivent le préfixe sans.
+- **Données** : mise à jour de la base, les noms allemands et espagnols des bêtes, vérifiés sur les termes employés par le jeu.
+- **Données** : Ta'shkal (Mont Hyjal), la page des bêtes cachées est aussi en allemand et en espagnol, titre, étapes, objet et les deux libellés de carte compris.
+- **Traductions nouvelles** : l'allemand et l'espagnol sont nouveaux, un terme peut donc sonner faux en jeu. Dites-moi lequel et où vous l'avez vu, je le corrige à la version suivante.
+
+### Deutsch
+
+- **Deutsch und Spanisch**: das Fenster, die Tooltips, die Wildtier-Warnung, der Tab Hier, die Seite der versteckten Begleiter und die Befehle sprechen jetzt auf einem deDE-Client Deutsch und auf esES- und esMX-Clients Spanisch. Alle anderen Clients behalten Englisch, ein französischer das Französische. Auf einem deutschen Client heißt der Addon Jägeratlas, auf einem spanischen Atlas del cazador.
+- **Namen auf Deutsch und Spanisch**: von den 472 lehrenden Wildtieren haben 399 einen deutschen Namen, 383 einen spanischen und 374 einen mexikanisch-spanischen, die übrigen behalten ihren englischen; Familien, Zonenbezeichnungen und Gegenstände der versteckten Begleiter folgen derselben Regel.
+- **Ein Name pro Sprache**: ein im Spiel notiertes Wildtier behält den Namen des Clients, auf dem es gesehen wurde; ein auf Französisch gelernter Name erscheint also nie auf einem deutschen Client, und umgekehrt.
+- **Koordinaten** stehen mit Komma auf einem französischen, deutschen oder spanischen Client (`67,4`), auf Englisch weiter mit Punkt.
+- **Datumsangaben** folgen der Reihenfolge des Clients: TT.MM.JJJJ auf Deutsch, TT/MM/JJJJ auf Französisch und Spanisch, JJJJ-MM-TT auf Englisch wie in der Datendatei.
+- **Schadensbereiche** im Rang-Tooltip sind übersetzt: „7-9 dégâts", „7–9 Schaden", „7-9 de daño".
+- **Breitere Unterzeile**: die Zeile unter dem Titel nimmt die ganze Breite des Kopfes ein, eine Rangbeschreibung bleibt also in einer Zeile und läuft nicht in die Tabs.
+- **Doppelpunkt im Chat**: das Leerzeichen vor dem Doppelpunkt bleibt französische Sitte; Deutsch und Spanisch schreiben das Präfix ohne.
+- **Daten**: Datenbank-Aktualisierung, die deutschen und spanischen Wildtiernamen, geprüft an den Begriffen, die das Spiel selbst verwendet.
+- **Daten**: Ta'shkal (Hyjal), die Seite der versteckten Begleiter gibt es auch auf Deutsch und Spanisch, samt Titel, Schritten, Gegenstand und beiden Kartenbezeichnungen.
+- **Neue Übersetzungen**: Deutsch und Spanisch sind neu, ein Begriff kann also im Spiel daneben klingen. Sag mir welcher und wo du ihn gesehen hast, ich korrigiere ihn in der nächsten Version.
+
+### Español
+
+- **Alemán y español**: la ventana, las descripciones emergentes, la alerta de bestia, la pestaña Aquí, la página de las mascotas ocultas y los comandos hablan ahora alemán en un cliente deDE y español en clientes esES y esMX. Los demás clientes conservan el inglés, y uno francés el francés. En un cliente alemán el addon se llama Jägeratlas, en uno español Atlas del cazador.
+- **Nombres en alemán y en español**: de las 472 bestias que enseñan, 399 tienen un nombre alemán, 383 uno español y 374 uno español de México, las demás conservan su nombre inglés; las familias, las zonas y los objetos de las mascotas ocultas siguen la misma regla.
+- **Un nombre por idioma**: una bestia anotada en el juego conserva el nombre del cliente donde se vio, así que un nombre aprendido en francés nunca aparece en un cliente alemán, ni al revés.
+- **Coordenadas** con coma en un cliente francés, alemán o español («67,4»), y todavía con punto en inglés.
+- **Fechas** en el orden del cliente: dd.mm.aaaa en alemán, dd/mm/aaaa en francés y español, aaaa-mm-dd en inglés como en el archivo de datos.
+- **Daño de los rangos** traducido en la descripción emergente: «7-9 dégâts», «7–9 Schaden», «7-9 de daño».
+- **Subtítulo más ancho**: la línea bajo el título ocupa todo el ancho de la cabecera, así una descripción de rango cabe en una línea en lugar de meterse en las pestañas.
+- **Dos puntos del chat**: el espacio antes de los dos puntos sigue siendo costumbre francesa; el alemán y el español escriben el prefijo sin él.
+- **Datos**: actualización de la base, los nombres alemanes y españoles de las bestias, comprobados con los términos que usa el juego.
+- **Datos**: Ta'shkal (Monte Hyjal), la página de las mascotas ocultas también está en alemán y en español, con título, pasos, objeto y las dos etiquetas del mapa.
+- **Traducciones nuevas**: el alemán y el español son nuevos, así que algún término puede sonar raro en el juego. Dime cuál y dónde lo viste, y lo corrijo en la versión siguiente.
+
 ## 0.2.2 - 2026-11-24
 
 ### Added

@@ -6,6 +6,8 @@ Atlas de dressage des familiers de chasseur pour World of Warcraft : Forever 1.6
 
 L'addon reconnaît votre familier actuel, calcule les rangs de compétence qu'il peut apprendre maintenant ou plus tard, et liste toutes les bêtes qui enseignent le rang choisi, avec leur niveau, leur zone et un repère sur la carte.
 
+L'addon parle anglais, français, allemand et espagnol : un client frFR reçoit le français (et le nom « Atlas de chasse »), un client deDE l'allemand (« Jägeratlas »), esES et esMX l'espagnol (« Atlas del cazador »), et tous les autres clients l'anglais.
+
 ![La fenêtre en thème Crépuscule : les rangs du familier à gauche, les bêtes qui enseignent le rang choisi, et l'emplacement de la bête sur la carte de la zone](docs/window-twilight.jpg)
 
 | Montrer sur la carte | Thème Parchemin |
