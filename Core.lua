@@ -6,8 +6,8 @@ local L = ns.L
 local DB_NAME = "AtlasDeChasseDB"
 local CHAR_DB_NAME = "AtlasDeChasseCharDB"
 local DEFAULT_THEME = "crepuscule"
--- French puts a space before the colon.
-local CHAT_PREFIX = "|cffe6ba66" .. L["Hunter's Atlas"] .. "|r" .. (ns.french and " : " or ": ")
+-- French puts a space before the colon, German and Spanish do not.
+local CHAT_PREFIX = "|cffe6ba66" .. L["Hunter's Atlas"] .. "|r" .. (ns.lang == "fr" and " : " or ": ")
 
 local EVENTS = {
 	"ADDON_LOADED",

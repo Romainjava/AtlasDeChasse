@@ -1,14 +1,14 @@
 -- Atlas de chasse · what the hunter sees in the world teaches the atlas.
 --
--- The generated data has no French name for some teachers and no coordinate at
--- all for others. Both are learned while playing: a beast the hunter targets or
--- points at, close enough that the hunter's own position stands for its own,
--- leaves its localized name and the place it was seen.
+-- The generated data has no name in the client's language for some teachers and
+-- no coordinate at all for others. Both are learned while playing: a beast the
+-- hunter targets or points at, close enough that the hunter's own position
+-- stands for its own, leaves its localized name and the place it was seen.
 --
 -- Account-wide, two kinds of fact:
 --   AtlasDeChasseDB.seen[npcId] =
---     { name = "<localized>", locale = "frFR", family = 5,
---       levelMin = 7, levelMax = 8, class = "rare",
+--     { name = "<localized>", locale = "frFR" / "deDE" / "esES" / "esMX",
+--       family = 5, levelMin = 7, levelMax = 8, class = "rare",
 --       spots = { { map, x, y, t } } }
 --   AtlasDeChasseDB.tamed[npcId] =
 --     { ranks = { spellId, ... }, family = 5, level = 7, t = <time> }
@@ -410,24 +410,24 @@ function Discovery.Watch(unit)
 end
 
 -- The name and the spots the window shows for one beast, merged in one place:
--- the data's French name on a French client, then the name the hunter learned
+-- the data's name in the client's language, then the name the hunter learned
 -- for this locale, then the data's English name; the data's spots, and the seen
 -- ones only when the data has none, flagged so the window can say where they
 -- come from. Returns name, spots, fromSights.
 function Discovery.Merge(npcId, beast)
 	local record = Discovery.Seen(npcId)
-	local fr = type(beast.fr) == "string" and beast.fr ~= "" and beast.fr or nil
+	local localized = ns.Localized(beast)
 	local locale = ClientLocale()
 	local name
-	if locale == "frFR" and fr then
-		name = fr
+	if localized then
+		name = localized
 	elseif record and type(record.name) == "string" and record.name ~= ""
 		and (record.locale == nil or record.locale == locale) then
 		name = record.name
 	else
-		-- a French client with a French name returned above: everyone else reads
-		-- the data's English name
-		name = beast.en or fr or ""
+		-- a client whose data name was returned above: everyone else reads the
+		-- data's English name
+		name = beast.en or localized or ""
 	end
 
 	local spots = beast.spots

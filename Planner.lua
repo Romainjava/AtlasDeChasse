@@ -331,8 +331,8 @@ function Planner.ZoneName(mapID, fallback)
 	return fallback
 end
 
--- French beast names on a French client, English otherwise; a name the hunter
--- learned by seeing the beast comes between the two (Discovery merges them).
+-- The beast's name in the client's language, English otherwise; a name the
+-- hunter learned by seeing the beast comes between the two (Discovery merges them).
 function Planner.BeastName(beast, id)
 	if type(beast) ~= "table" then return "" end
 	return Discovery.Merge(id, beast)

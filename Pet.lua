@@ -18,30 +18,9 @@ ns.Pet = Pet
 
 local MAX_PET_SLOTS = 30
 
--- Family names the client may hand over, keyed by the English family name of
--- the data file. French names are best guesses of the frFR client.
-local FAMILY_FR = {
-	["Wolf"] = "Loup",
-	["Cat"] = "Félin",
-	["Spider"] = "Araignée",
-	["Bear"] = "Ours",
-	["Boar"] = "Sanglier",
-	["Crocolisk"] = "Crocilisque",
-	["Carrion Bird"] = "Charognard",
-	["Crab"] = "Crabe",
-	["Gorilla"] = "Gorille",
-	["Raptor"] = "Raptor",
-	["Tallstrider"] = "Haut-trotteur",
-	["Scorpid"] = "Scorpide",
-	["Turtle"] = "Tortue",
-	["Bat"] = "Chauve-souris",
-	["Hyena"] = "Hyène",
-	["Bird of Prey"] = "Oiseau de proie",
-	["Owl"] = "Chouette",
-	["Wind Serpent"] = "Serpent des vents",
-	["Windserpent"] = "Serpent des vents",
-	["Fox"] = "Renard",
-}
+-- Family ids the client hands over are matched against the data's English name
+-- and against every language's name (ns.familyNames, Locale.lua), so a name any
+-- client prints resolves even when the numeric id does not.
 
 local function Secret(value)
 	return issecretvalue ~= nil and issecretvalue(value) and true or false
@@ -67,6 +46,7 @@ end
 local familyByName   -- [normalized localized or English name] = family id
 
 -- Built from the generated data, so the ids are the ones the data file uses.
+-- Every language's name is registered, so a name any client hands over resolves.
 function Pet.BuildFamilyNames()
 	familyByName = {}
 	for id, family in pairs(ns.families or {}) do
@@ -75,8 +55,10 @@ function Pet.BuildFamilyNames()
 			local names = {}
 			if type(family.en) == "string" then names[#names + 1] = family.en end
 			if type(family.fr) == "string" then names[#names + 1] = family.fr end
-			local french = FAMILY_FR[family.en]
-			if french then names[#names + 1] = french end
+			for _, localized in pairs(ns.familyNames or {}) do
+				local name = localized[family.en]
+				if name then names[#names + 1] = name end
+			end
 			for _, name in ipairs(names) do
 				local key = Normalize(name)
 				if key then familyByName[key] = id end
@@ -90,14 +72,18 @@ local function FamilyNameIndex()
 	return familyByName
 end
 
--- A family's name for display: French on a French client, English otherwise.
+-- A family's name for display: the client's language on a localized client,
+-- English otherwise. The game's own name wins when the game is asked for it
+-- (Pet.Family returns it); this is the one drawn from the data.
 function Pet.DisplayName(familyId)
 	local family = ns.families and ns.families[familyId]
 	if type(family) ~= "table" then return tostring(familyId or "?") end
-	if type(GetLocale) == "function" and GetLocale() == "frFR" then
-		if type(family.fr) == "string" and family.fr ~= "" then return family.fr end
-		local french = FAMILY_FR[family.en]
-		if french then return french end
+	local names = ns.lang and ns.familyNames and ns.familyNames[ns.lang]
+	if names then
+		local own = family[ns.lang]
+		if type(own) == "string" and own ~= "" then return own end
+		local localized = names[family.en]
+		if localized then return localized end
 	end
 	return family.en or tostring(familyId)
 end

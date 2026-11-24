@@ -553,7 +553,8 @@ local function BuildMain()
 	subtitle = PaintedText(header, "small", "dim")
 	subtitle:SetPoint("TOPLEFT", titleName, "BOTTOMLEFT", 0, -6)
 	subtitle:SetJustifyH("LEFT")
-	subtitle:SetWidth(480)
+	-- Wide enough that a rank description stays on one line: the header is 650 px.
+	subtitle:SetWidth(W - SIDEBAR_W - 34)
 	subtitle:SetWordWrap(true)
 	learnedBadge = PaintedText(header, "label", "ok")
 	learnedBadge:SetPoint("TOPLEFT", subtitle, "BOTTOMLEFT", 0, -3)
@@ -1589,12 +1590,8 @@ end
 -----------------------------------------------------------------------------
 
 -- The record's text in the client's language; English clients get no line
--- when only French is known.
-local function Pick(record)
-	if type(record) ~= "table" then return nil end
-	if ns.french then return record.fr or record.en end
-	return record.en
-end
+-- when the record has no English text. One place decides (ns.Pick, Locale.lua).
+local Pick = ns.Pick
 
 local function Readable(value)
 	if value == nil or (issecretvalue and issecretvalue(value)) then return nil end
@@ -1761,15 +1758,16 @@ end
 -- Here page: what this zone can teach the pet's family
 -----------------------------------------------------------------------------
 
--- The data's date in the client's order: dd/mm/yyyy on a French client, the
--- data file's own yyyy-mm-dd everywhere else.
+-- The data's date in the client's order: dd/mm/yyyy on a French or Spanish
+-- client, dd.mm.yyyy in German, the data file's own yyyy-mm-dd in English.
 local function DataDate()
 	local date = ns.dataDate
 	if type(date) ~= "string" then return nil end
-	if not ns.french then return date end
 	local year, month, day = date:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)$")
 	if not year then return date end
-	return ("%s/%s/%s"):format(day, month, year)
+	if ns.lang == "de" then return ("%s.%s.%s"):format(day, month, year) end
+	if ns.lang then return ("%s/%s/%s"):format(day, month, year) end
+	return date
 end
 
 -- ## Version: from the toc, through whichever reader the client has; a client
